@@ -19,7 +19,18 @@ async function bootstrap() {
 
   // CORS para el frontend Next.js
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        origin.includes('localhost') ||
+        origin.includes('easypanel.host') ||
+        origin === process.env.FRONTEND_URL
+      ) {
+        callback(null, true)
+      } else {
+        callback(null, false)
+      }
+    },
     credentials: true,
   });
 
