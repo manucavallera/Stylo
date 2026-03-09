@@ -1,0 +1,155 @@
+# ERD — Sistema de Gestión Gabi
+## Flujo central: `Proveedor → Fardo → Prenda → Venta → Comprobante`
+
+```mermaid
+erDiagram
+    PROVEEDOR {
+        uuid id PK
+        string nombre
+        string telefono
+        string notas
+    }
+
+    FARDO {
+        uuid id PK
+        uuid proveedor_id FK
+        date fecha_compra
+        decimal costo_total
+        string moneda
+        decimal peso_kg
+        int total_prendas
+        string estado
+        string notas
+    }
+
+    CATEGORIA {
+        uuid id PK
+        string nombre
+    }
+
+    TALLE {
+        uuid id PK
+        string nombre
+    }
+
+    PRENDA {
+        uuid id PK
+        uuid fardo_id FK
+        uuid categoria_id FK
+        uuid talle_id FK
+        decimal costo_unitario
+        decimal precio_venta
+        decimal precio_promocional
+        string estado
+        boolean tiene_falla
+        string descripcion_falla
+        string qr_code
+        timestamp created_at
+    }
+
+    FOTO_PRENDA {
+        uuid id PK
+        uuid prenda_id FK
+        string url
+        int orden
+    }
+
+    CLIENTE {
+        uuid id PK
+        string nombre
+        string telefono_whatsapp
+        string notas
+    }
+
+    RESERVA {
+        uuid id PK
+        uuid prenda_id FK
+        uuid cliente_id FK
+        timestamp fecha_creacion
+        timestamp fecha_expiracion
+        string estado
+        string comprobante_url
+    }
+
+    CAJA_DIARIA {
+        uuid id PK
+        date fecha
+        decimal monto_apertura
+        decimal monto_esperado
+        decimal monto_real
+        decimal diferencia
+        string estado
+    }
+
+    VENTA {
+        uuid id PK
+        uuid prenda_id FK
+        uuid reserva_id FK
+        uuid cliente_id FK
+        uuid caja_id FK
+        timestamp fecha_venta
+        decimal precio_final
+        decimal costo_historico_ars
+        string metodo_pago
+        string canal_venta
+    }
+
+    COMPROBANTE {
+        uuid id PK
+        uuid venta_id FK
+        int numero_correlativo
+        timestamp fecha_emision
+        string estado
+        string pdf_url
+        string cae
+        date vencimiento_cae
+    }
+
+    PROVEEDOR ||--o{ FARDO : "provee"
+    FARDO ||--o{ PRENDA : "contiene"
+    CATEGORIA ||--o{ PRENDA : "clasifica"
+    TALLE ||--o{ PRENDA : "tiene"
+    PRENDA ||--o{ FOTO_PRENDA : "tiene"
+    PRENDA ||--o| RESERVA : "puede estar en"
+    CLIENTE ||--o{ RESERVA : "hace"
+    RESERVA ||--o| VENTA : "puede generar"
+    PRENDA ||--|| VENTA : "se vende en"
+    CLIENTE ||--o{ VENTA : "compra en"
+    CAJA_DIARIA ||--o{ VENTA : "registra"
+    VENTA ||--|| COMPROBANTE : "genera"
+```
+
+---
+
+## Detalle de entidades clave
+
+### `FARDO`
+- `moneda`: `ARS` o `USD`
+- `estado`: `pendiente_apertura` | `abierto` | `cerrado`
+- `costo_unitario` de cada prenda = `costo_total / total_prendas` (calculado al abrir)
+
+### `PRENDA`
+- `estado`: `disponible` | `reservado` | `vendido` | `retirado` | `falla`
+- `qr_code`: string único generado al crear la prenda (apunta a su `id`)
+- `costo_unitario`: calculado automáticamente desde el fardo
+
+### `RESERVA`
+- `estado`: `activa` | `expirada` | `confirmada` | `cancelada`
+- `fecha_expiracion`: se setea al crear (ej: +15 min o +24 hs)
+- `comprobante_url`: foto o PDF del pago que manda el cliente
+
+### `VENTA`
+- `metodo_pago`: `efectivo` | `mercadopago` | `transferencia`
+- `canal_venta`: `local` | `online` — distingue si fue en el mostrador o por WhatsApp/catálogo
+- `reserva_id`: nullable — venta directa en local no pasa por reserva
+- `cliente_id`: nullable — venta anónima en efectivo en el local
+
+### `COMPROBANTE`
+- `numero_correlativo`: auto-incrementado (0001, 0002…)
+- `estado`: `emitido` | `anulado`
+- `pdf_url`: guardado en Supabase Storage
+
+### `CAJA_DIARIA`
+- Una por día
+- `estado`: `abierta` | `cerrada`
+- `monto_cierre`: null hasta que Gabi cierre la caja

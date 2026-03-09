@@ -1,0 +1,42 @@
+# Tareas — Sistema de Gestión Gabi
+
+## Diseño y Arquitectura
+- [x] Definir contexto del negocio (fardos, prendas, ventas)
+- [x] Elegir stack técnico (Next.js, NestJS, Prisma, Supabase)
+- [x] Diseñar ERD completo
+- [x] Validar y blindar ERD con observaciones
+- [x] Crear schema de Prisma completo y validado
+
+## Backend — NestJS
+- [/] Scaffold del proyecto NestJS
+- [ ] Copiar schema.prisma al proyecto
+- [ ] Configurar PrismaModule y PrismaService
+- [ ] Módulo: Proveedores (CRUD)
+- [ ] Módulo: Fardos (CRUD + apertura de fardo con cálculo de costo unitario)
+- [ ] Módulo: Categorías y Talles (CRUD simple)
+- [ ] Módulo: Prendas (CRUD + generación de QR + upload de fotos a Supabase Storage)
+- [ ] Módulo: Clientes (CRUD)
+- [ ] Módulo: Reservas (crear, confirmar, cancelar, expiración automática)
+- [ ] Módulo: Caja Diaria (apertura, cierre, reconciliación)
+- [ ] Módulo: Ventas (POS local + online)
+- [ ] Módulo: Comprobantes (generación PDF + numeración correlativa)
+- [ ] Guards de autenticación (JWT con Supabase Auth)
+- [ ] Configurar variables de entorno (.env)
+
+## Frontend — Next.js
+- [ ] Scaffold del proyecto Next.js
+- [ ] Configurar Supabase Auth (login de Gabi)
+- [ ] Dashboard principal
+- [ ] Pantalla de carga de fardos y apertura
+- [ ] Listado de prendas con filtros (estado, talle, categoría)
+- [ ] POS (punto de venta local, escaneo QR)
+- [ ] Gestión de reservas
+- [ ] Caja diaria
+- [ ] Catálogo público (/catalogo)
+- [ ] Reportes básicos
+
+## Infraestructura
+- [ ] Configurar Supabase (proyecto, Storage buckets, RLS policies)
+- [ ] Configurar Railway para el backend
+- [ ] Configurar Vercel para el frontend
+- [ ] Variables de entorno en producción
