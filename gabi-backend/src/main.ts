@@ -17,20 +17,9 @@ async function bootstrap() {
   // Prefijo global de la API
   app.setGlobalPrefix('api/v1');
 
-  // CORS para el frontend Next.js
+  // CORS — acepta cualquier origen (app interna)
   app.enableCors({
-    origin: (origin, callback) => {
-      if (
-        !origin ||
-        origin.includes('localhost') ||
-        origin.includes('easypanel.host') ||
-        origin === process.env.FRONTEND_URL
-      ) {
-        callback(null, true)
-      } else {
-        callback(null, false)
-      }
-    },
+    origin: true,
     credentials: true,
   });
 
