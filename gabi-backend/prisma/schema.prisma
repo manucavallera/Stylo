@@ -1,0 +1,315 @@
+// ============================================================
+// Schema de Prisma — Sistema de Gestión Gabi
+// Base de datos: PostgreSQL (Supabase)
+// ============================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Moneda {
+  ARS
+  USD
+}
+
+enum EstadoFardo {
+  PENDIENTE_APERTURA
+  ABIERTO
+  CERRADO
+}
+
+enum EstadoPrenda {
+  DISPONIBLE
+  RESERVADO
+  VENDIDO
+  RETIRADO
+  FALLA
+}
+
+enum EstadoReserva {
+  ACTIVA
+  EXPIRADA
+  CONFIRMADA
+  CANCELADA
+}
+
+enum MetodoPago {
+  EFECTIVO
+  MERCADOPAGO
+  TRANSFERENCIA
+}
+
+enum CanalVenta {
+  LOCAL
+  ONLINE
+}
+
+enum EstadoCaja {
+  ABIERTA
+  CERRADA
+}
+
+enum EstadoComprobante {
+  EMITIDO
+  ANULADO
+}
+
+// ============================================================
+// PROVEEDOR
+// ============================================================
+
+model Proveedor {
+  id        String   @id @default(uuid())
+  nombre    String
+  telefono  String?
+  notas     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fardos Fardo[]
+
+  @@map("proveedores")
+}
+
+// ============================================================
+// FARDO
+// ============================================================
+
+model Fardo {
+  id           String      @id @default(uuid())
+  proveedorId  String      @map("proveedor_id")
+  fechaCompra  DateTime    @map("fecha_compra")
+  costoTotal   Decimal     @map("costo_total") @db.Decimal(12, 2)
+  moneda       Moneda      @default(ARS)
+  pesoKg       Decimal?    @map("peso_kg") @db.Decimal(8, 2)
+  totalPrendas Int         @default(0) @map("total_prendas")
+  estado       EstadoFardo @default(PENDIENTE_APERTURA)
+  notas        String?
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  proveedor Proveedor @relation(fields: [proveedorId], references: [id])
+  prendas   Prenda[]
+
+  @@map("fardos")
+}
+
+// ============================================================
+// CATEGORIA
+// ============================================================
+
+model Categoria {
+  id        String   @id @default(uuid())
+  nombre    String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  prendas Prenda[]
+
+  @@map("categorias")
+}
+
+// ============================================================
+// TALLE
+// ============================================================
+
+model Talle {
+  id        String   @id @default(uuid())
+  nombre    String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  prendas Prenda[]
+
+  @@map("talles")
+}
+
+// ============================================================
+// PRENDA
+// ============================================================
+
+model Prenda {
+  id                 String       @id @default(uuid())
+  fardoId            String       @map("fardo_id")
+  categoriaId        String       @map("categoria_id")
+  talleId            String       @map("talle_id")
+  // costoUnitario siempre normalizado a ARS al momento de abrir el fardo
+  costoUnitario      Decimal      @map("costo_unitario") @db.Decimal(12, 2)
+  precioVenta        Decimal      @map("precio_venta") @db.Decimal(12, 2)
+  precioPromocional  Decimal?     @map("precio_promocional") @db.Decimal(12, 2)
+  estado             EstadoPrenda @default(DISPONIBLE)
+  tieneFalla         Boolean      @default(false) @map("tiene_falla")
+  descripcionFalla   String?      @map("descripcion_falla")
+  qrCode             String       @unique @map("qr_code")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  fardo     Fardo      @relation(fields: [fardoId], references: [id])
+  categoria Categoria  @relation(fields: [categoriaId], references: [id])
+  talle     Talle      @relation(fields: [talleId], references: [id])
+  fotos     FotoPrenda[]
+  reservas  Reserva[]
+  venta     Venta?
+
+  @@index([estado])           // búsquedas por disponible/reservado/vendido
+  @@index([fardoId])          // ROI por fardo
+  @@map("prendas")
+}
+
+// ============================================================
+// FOTO PRENDA
+// ============================================================
+
+model FotoPrenda {
+  id        String   @id @default(uuid())
+  prendaId  String   @map("prenda_id")
+  url       String
+  orden     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  prenda Prenda @relation(fields: [prendaId], references: [id], onDelete: Cascade)
+
+  @@map("fotos_prenda")
+}
+
+// ============================================================
+// CLIENTE
+// ============================================================
+
+model Cliente {
+  id               String   @id @default(uuid())
+  nombre           String
+  telefonoWhatsapp String?  @map("telefono_whatsapp")
+  notas            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  reservas Reserva[]
+  ventas   Venta[]
+
+  @@map("clientes")
+}
+
+// ============================================================
+// RESERVA
+// ============================================================
+
+model Reserva {
+  id              String        @id @default(uuid())
+  prendaId        String        @map("prenda_id")   // sin @unique — una prenda puede reservarse de nuevo si expira
+  clienteId       String        @map("cliente_id")
+  fechaExpiracion DateTime      @map("fecha_expiracion")
+  estado          EstadoReserva @default(ACTIVA)
+  comprobanteUrl  String?       @map("comprobante_url")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  prenda  Prenda  @relation(fields: [prendaId], references: [id])
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+  venta   Venta?
+
+  // La unicidad (1 reserva activa por prenda) se controla en el backend,
+  // no con constraint de DB, para permitir re-reservas tras expiración.
+  @@index([prendaId, estado])  // consulta: ¿tiene reserva activa esta prenda?
+  @@index([estado, fechaExpiracion]) // cron de n8n para expirar reservas
+  @@map("reservas")
+}
+
+// ============================================================
+// CAJA DIARIA
+// ============================================================
+
+model CajaDiaria {
+  id             String     @id @default(uuid())
+  fecha          DateTime   @unique @db.Date
+  montoApertura  Decimal    @map("monto_apertura") @db.Decimal(12, 2)
+  montoEsperado  Decimal    @default(0) @map("monto_esperado") @db.Decimal(12, 2)
+  montoReal      Decimal?   @map("monto_real") @db.Decimal(12, 2)
+  diferencia     Decimal?   @db.Decimal(12, 2)
+  estado         EstadoCaja @default(ABIERTA)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  ventas  Venta[]
+  gastos  GastoCaja[]
+
+  @@map("caja_diaria")
+}
+
+// ============================================================
+// GASTO DE CAJA
+// ============================================================
+
+model GastoCaja {
+  id        String     @id @default(uuid())
+  cajaId    String     @map("caja_id")
+  concepto  String
+  monto     Decimal    @db.Decimal(12, 2)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  caja CajaDiaria @relation(fields: [cajaId], references: [id], onDelete: Cascade)
+
+  @@index([cajaId])
+  @@map("gastos_caja")
+}
+
+// ============================================================
+// VENTA
+// ============================================================
+
+model Venta {
+  id                 String     @id @default(uuid())
+  prendaId           String     @unique @map("prenda_id")
+  reservaId          String?    @unique @map("reserva_id")
+  clienteId          String?    @map("cliente_id")
+  cajaId             String?    @map("caja_id")
+  fechaVenta         DateTime   @default(now()) @map("fecha_venta")
+  precioFinal        Decimal    @map("precio_final") @db.Decimal(12, 2)
+  costoHistoricoArs  Decimal    @map("costo_historico_ars") @db.Decimal(12, 2)
+  metodoPago         MetodoPago @map("metodo_pago")
+  canalVenta         CanalVenta @map("canal_venta")
+  createdAt          DateTime   @default(now()) @map("created_at")
+
+  prenda      Prenda      @relation(fields: [prendaId], references: [id])
+  reserva     Reserva?    @relation(fields: [reservaId], references: [id])
+  cliente     Cliente?    @relation(fields: [clienteId], references: [id])
+  caja        CajaDiaria? @relation(fields: [cajaId], references: [id])
+  comprobante Comprobante?
+
+  @@index([fechaVenta])   // reportes y caja diaria
+  @@index([clienteId])    // historial de cliente
+  @@map("ventas")
+}
+
+// ============================================================
+// COMPROBANTE
+// ============================================================
+
+model Comprobante {
+  id                 String            @id @default(uuid())
+  ventaId            String            @unique @map("venta_id")
+  numeroCorrelativo  Int               @unique @default(autoincrement()) @map("numero_correlativo")
+  fechaEmision       DateTime          @default(now()) @map("fecha_emision")
+  estado             EstadoComprobante @default(EMITIDO)
+  pdfUrl             String?           @map("pdf_url")
+  // Campos AFIP — se completan cuando Gabi esté inscripta
+  cae                String?
+  vencimientoCae     DateTime?         @map("vencimiento_cae") @db.Date
+  // Número oficial AFIP formato "0005-00000123" — distinto del correlativo interno
+  numeroOficial      String?           @map("numero_oficial")
+
+  venta Venta @relation(fields: [ventaId], references: [id])
+
+  @@map("comprobantes")
+}
