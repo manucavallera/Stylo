@@ -1,5 +1,8 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
 [phases.build]
-cmds = ["npm install --legacy-peer-deps", "./node_modules/.bin/prisma generate", "npm run build"]
+cmds = ["npm install --legacy-peer-deps --include=dev", "./node_modules/.bin/prisma generate", "npm run build"]
 
 [start]
 cmd = "node dist/main"
