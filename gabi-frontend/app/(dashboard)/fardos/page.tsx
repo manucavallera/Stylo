@@ -96,7 +96,7 @@ export default function FardosPage() {
 
 function FardoRow({ fardo, onAbrir, onAgregarPrendas, onCambiarPrecio }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onCambiarPrecio: () => void }) {
     return (
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5 flex items-center gap-4">
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
                     <span className={`px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase ${ESTADO_COLORS[fardo.estado]}`}>
@@ -110,7 +110,7 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onCambiarPrecio }: { fardo
                     {fardo.totalPrendas > 0 && ` · ${fardo.totalPrendas} prendas`}
                 </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
                 {fardo.estado === 'PENDIENTE_APERTURA' && (
                     <button onClick={onAbrir} className="px-4 py-2 bg-orange-500 text-black font-black text-xs uppercase rounded-xl hover:bg-orange-400 transition-colors whitespace-nowrap">
                         Abrir Fardo

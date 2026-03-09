@@ -293,58 +293,54 @@ function ReservaRow({ reserva: r, accionando, onConfirmar, onCancelar }: {
     const vencida = new Date(r.fechaExpiracion) < new Date()
 
     return (
-        <div key={r.id} className={`bg-zinc-900 border rounded-2xl p-5 ${vencida ? 'border-red-500/20' : urgente ? 'border-amber-500/30' : 'border-white/5'}`}>
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase ${vencida ? 'bg-red-500/10 text-red-400 border-red-500/20' : urgente ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse' : 'bg-zinc-700 text-zinc-300 border-zinc-600'}`}>
-                            ⏱ {texto}
-                        </span>
-                    </div>
-                    <p className="text-white font-bold">{r.cliente?.nombre ?? 'Cliente desconocido'}</p>
-                    {r.cliente?.telefonoWhatsapp && (
-                        <a
-                            href={`https://wa.me/${r.cliente.telefonoWhatsapp.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-emerald-400 text-xs hover:underline"
-                        >
-                            WhatsApp: {r.cliente.telefonoWhatsapp}
-                        </a>
-                    )}
-                    <p className="text-zinc-400 text-sm mt-1">
-                        {r.prenda?.categoria?.nombre} · Talle {r.prenda?.talle?.nombre}
-                    </p>
-                    <p className="text-orange-400 font-bold">
-                        ${Number(r.prenda?.precioVenta).toLocaleString('es-AR')}
-                    </p>
-                </div>
-                <div className="flex flex-col gap-2">
-                    {urgente && r.cliente?.telefonoWhatsapp && (
-                        <a
-                            href={`https://wa.me/${r.cliente.telefonoWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${r.cliente.nombre}! Tu reserva vence en menos de 30 minutos. ¿Confirmás el pago?`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-4 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-black uppercase rounded-xl hover:bg-amber-500/20 transition-colors whitespace-nowrap text-center animate-pulse"
-                        >
-                            ⚡ Avisar
-                        </a>
-                    )}
-                    <button
-                        onClick={() => onConfirmar(r.id)}
-                        disabled={accionando === r.id}
-                        className="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-black uppercase rounded-xl hover:bg-emerald-500/20 disabled:opacity-50 transition-colors whitespace-nowrap"
+        <div key={r.id} className={`bg-zinc-900 border rounded-2xl p-4 sm:p-5 ${vencida ? 'border-red-500/20' : urgente ? 'border-amber-500/30' : 'border-white/5'}`}>
+            <div className="flex items-center gap-2 mb-2">
+                <span className={`px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase ${vencida ? 'bg-red-500/10 text-red-400 border-red-500/20' : urgente ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse' : 'bg-zinc-700 text-zinc-300 border-zinc-600'}`}>
+                    ⏱ {texto}
+                </span>
+            </div>
+            <p className="text-white font-bold">{r.cliente?.nombre ?? 'Cliente desconocido'}</p>
+            {r.cliente?.telefonoWhatsapp && (
+                <a
+                    href={`https://wa.me/${r.cliente.telefonoWhatsapp.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 text-xs hover:underline"
+                >
+                    WhatsApp: {r.cliente.telefonoWhatsapp}
+                </a>
+            )}
+            <p className="text-zinc-400 text-sm mt-1">
+                {r.prenda?.categoria?.nombre} · Talle {r.prenda?.talle?.nombre}
+            </p>
+            <p className="text-orange-400 font-bold mb-3">
+                ${Number(r.prenda?.precioVenta).toLocaleString('es-AR')}
+            </p>
+            <div className="flex gap-2 flex-wrap">
+                {urgente && r.cliente?.telefonoWhatsapp && (
+                    <a
+                        href={`https://wa.me/${r.cliente.telefonoWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${r.cliente.nombre}! Tu reserva vence en menos de 30 minutos. ¿Confirmás el pago?`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-4 py-2.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-black uppercase rounded-xl hover:bg-amber-500/20 transition-colors text-center animate-pulse"
                     >
-                        ✓ Confirmar
-                    </button>
-                    <button
-                        onClick={() => onCancelar(r.id)}
-                        disabled={accionando === r.id}
-                        className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-black uppercase rounded-xl hover:bg-red-500/20 disabled:opacity-50 transition-colors whitespace-nowrap"
-                    >
-                        ✕ Cancelar
-                    </button>
-                </div>
+                        ⚡ Avisar
+                    </a>
+                )}
+                <button
+                    onClick={() => onConfirmar(r.id)}
+                    disabled={accionando === r.id}
+                    className="flex-1 px-4 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-black uppercase rounded-xl hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+                >
+                    ✓ Confirmar
+                </button>
+                <button
+                    onClick={() => onCancelar(r.id)}
+                    disabled={accionando === r.id}
+                    className="flex-1 px-4 py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-black uppercase rounded-xl hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+                >
+                    ✕ Cancelar
+                </button>
             </div>
         </div>
     )

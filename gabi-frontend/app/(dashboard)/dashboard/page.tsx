@@ -57,7 +57,7 @@ export default function DashboardPage() {
             {resumen && resumen.porMetodoPago.length > 0 && (
                 <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6">
                     <h2 className="text-white font-black uppercase tracking-wide text-sm mb-4">Ventas por método de pago</h2>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {resumen.porMetodoPago.map(m => (
                             <div key={m.metodoPago} className="bg-zinc-800 rounded-xl p-4">
                                 <p className="text-zinc-500 text-xs uppercase tracking-wide mb-1">{m.metodoPago}</p>

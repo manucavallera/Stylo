@@ -44,7 +44,7 @@ export default function CajaPage() {
             </div>
 
             {sinCaja ? (
-                <div className="bg-zinc-900 border border-white/5 rounded-2xl p-10 text-center space-y-4">
+                <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6 sm:p-10 text-center space-y-4">
                     <p className="text-4xl">💰</p>
                     <p className="text-white font-bold text-lg">No hay caja abierta para hoy</p>
                     <p className="text-zinc-500 text-sm">Abrí la caja para empezar a registrar ventas en efectivo</p>
@@ -58,9 +58,9 @@ export default function CajaPage() {
             ) : caja ? (
                 <div className="space-y-4">
                     {/* Estado */}
-                    <div className={`p-5 rounded-2xl border ${caja.estado === 'ABIERTA' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-zinc-900 border-white/5'}`}>
-                        <div className="flex items-center justify-between">
-                            <div>
+                    <div className={`p-4 sm:p-5 rounded-2xl border ${caja.estado === 'ABIERTA' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-zinc-900 border-white/5'}`}>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <div className="flex-1">
                                 <span className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${caja.estado === 'ABIERTA' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-zinc-700 text-zinc-400 border-zinc-600'}`}>
                                     {caja.estado}
                                 </span>
@@ -68,16 +68,16 @@ export default function CajaPage() {
                                 <p className="text-zinc-500 text-xs uppercase tracking-wide">Monto de apertura</p>
                             </div>
                             {caja.estado === 'ABIERTA' && (
-                                <div className="flex flex-col gap-2">
+                                <div className="flex sm:flex-col gap-2">
                                     <button
                                         onClick={() => setModalGasto(true)}
-                                        className="px-5 py-2.5 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-orange-500/30 hover:text-orange-400 transition-colors"
+                                        className="flex-1 sm:flex-none px-5 py-2.5 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-orange-500/30 hover:text-orange-400 transition-colors"
                                     >
                                         + Gasto
                                     </button>
                                     <button
                                         onClick={() => setModalCerrar(true)}
-                                        className="px-5 py-2.5 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-red-500/30 hover:text-red-400 transition-colors"
+                                        className="flex-1 sm:flex-none px-5 py-2.5 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-red-500/30 hover:text-red-400 transition-colors"
                                     >
                                         Cerrar Caja
                                     </button>
