@@ -22,7 +22,7 @@ export default function ConfiguracionPage() {
                         onClick={() => setTab(t)}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase border transition-all ${tab === t ? 'bg-orange-500 text-black border-orange-500' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
                     >
-                        {t === 'categorias' ? '🏷️ Categorías' : t === 'talles' ? '📐 Talles' : '🏭 Proveedores'}
+                        {t === 'categorias' ? 'Categorías' : t === 'talles' ? 'Talles' : 'Proveedores'}
                     </button>
                 ))}
             </div>
@@ -290,7 +290,7 @@ function FormProveedor({
 
     return (
         <form onSubmit={handleSubmit} className="bg-zinc-900 border border-orange-500/20 rounded-xl p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label className="label">Nombre</label>
                     <input value={nombre} onChange={e => setNombre(e.target.value)} className="input" placeholder="Nombre" required autoFocus />
