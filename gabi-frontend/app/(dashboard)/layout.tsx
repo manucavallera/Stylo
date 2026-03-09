@@ -21,6 +21,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter()
     const supabase = createClient()
 
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session) router.replace('/login')
+        })
+    }, []);
+
     async function handleLogout() {
         await supabase.auth.signOut()
         router.push('/login')
