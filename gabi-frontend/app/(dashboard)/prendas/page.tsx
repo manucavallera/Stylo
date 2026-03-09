@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { prendasApi, type Prenda } from '@/lib/api'
 
@@ -13,6 +13,10 @@ const ESTADO_COLORS: Record<string, string> = {
 }
 
 export default function PrendasPage() {
+    return <Suspense fallback={<div className="space-y-4">{[...Array(8)].map((_, i) => <div key={i} className="h-16 bg-zinc-900 rounded-2xl animate-pulse" />)}</div>}><PrendasInner /></Suspense>
+}
+
+function PrendasInner() {
     const searchParams = useSearchParams()
     const fardoId = searchParams.get('fardoId') ?? undefined
 
