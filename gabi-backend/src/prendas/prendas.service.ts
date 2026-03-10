@@ -76,6 +76,16 @@ export class PrendasService {
         await this.prisma.prenda.delete({ where: { id } });
     }
 
+    // ── Fotos ────────────────────────────────────────────────────
+    async addFoto(prendaId: string, url: string, orden: number) {
+        await this.findOne(prendaId);
+        return this.prisma.fotoPrenda.create({ data: { prendaId, url, orden } });
+    }
+
+    async removeFoto(prendaId: string, fotoId: string) {
+        await this.prisma.fotoPrenda.delete({ where: { id: fotoId, prendaId } });
+    }
+
     // ── Clavos: prendas sin vender después de N días ─────────────
     findClavos(diasSinVenta = 30) {
         const fechaLimite = new Date();

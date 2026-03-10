@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Delete, Body, Param, Query, HttpCode } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, Param, Query, HttpCode } from '@nestjs/common';
 import { PrendasService } from './prendas.service';
 import { UpdatePrendaDto } from './dto/update-prenda.dto';
 
@@ -46,5 +46,18 @@ export class PrendasController {
     @HttpCode(204)
     remove(@Param('id') id: string) {
         return this.prendasService.remove(id);
+    }
+
+    // POST /api/v1/prendas/:id/fotos — registrar URL de foto ya subida a Supabase Storage
+    @Post(':id/fotos')
+    addFoto(@Param('id') id: string, @Body() body: { url: string; orden?: number }) {
+        return this.prendasService.addFoto(id, body.url, body.orden ?? 0);
+    }
+
+    // DELETE /api/v1/prendas/:id/fotos/:fotoId
+    @Delete(':id/fotos/:fotoId')
+    @HttpCode(204)
+    removeFoto(@Param('id') id: string, @Param('fotoId') fotoId: string) {
+        return this.prendasService.removeFoto(id, fotoId);
     }
 }
