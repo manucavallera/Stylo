@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { prendasApi, type Prenda } from '@/lib/api'
+import { createClient } from '@/lib/supabase/client'
 
 const ESTADOS = ['DISPONIBLE', 'RESERVADO', 'VENDIDO', 'FALLA']
 const ESTADO_COLORS: Record<string, string> = {
@@ -172,8 +173,14 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
         precioPromocional: String(prenda.precioPromocional ?? ''),
         estado: prenda.estado,
     })
+    const [fotos, setFotos] = useState<{ id: string; url: string; orden: number }[]>(
+        (prenda.fotos ?? []).map((f, i) => ({ id: (f as any).id ?? String(i), url: f.url, orden: i }))
+    )
     const [guardando, setGuardando] = useState(false)
+    const [subiendoFoto, setSubiendoFoto] = useState(false)
     const [error, setError] = useState('')
+    const inputFotoRef = useRef<HTMLInputElement>(null)
+    const supabase = createClient()
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -185,8 +192,9 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
                 estado: form.estado,
             }
             if (form.precioPromocional) data.precioPromocional = Number(form.precioPromocional)
+            else data.precioPromocional = null
             const actualizada = await prendasApi.actualizar(prenda.id, data)
-            onGuardado(actualizada)
+            onGuardado({ ...actualizada, fotos })
         } catch (e: any) {
             setError(e.message || 'Error al guardar')
         } finally {
@@ -194,16 +202,99 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
         }
     }
 
+    async function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const files = Array.from(e.target.files ?? [])
+        if (!files.length) return
+        setSubiendoFoto(true)
+        setError('')
+        try {
+            for (const file of files) {
+                const ext = file.name.split('.').pop()
+                const path = `prendas/${prenda.id}/${Date.now()}.${ext}`
+                const { error: uploadError } = await supabase.storage
+                    .from('prendas')
+                    .upload(path, file, { upsert: false })
+                if (uploadError) throw new Error(uploadError.message)
+
+                const { data: { publicUrl } } = supabase.storage.from('prendas').getPublicUrl(path)
+                const orden = fotos.length
+                const nueva = await prendasApi.addFoto(prenda.id, publicUrl, orden)
+                setFotos(f => [...f, { id: nueva.id, url: publicUrl, orden }])
+            }
+        } catch (e: any) {
+            setError(e.message || 'Error al subir foto')
+        } finally {
+            setSubiendoFoto(false)
+            if (inputFotoRef.current) inputFotoRef.current.value = ''
+        }
+    }
+
+    async function handleEliminarFoto(fotoId: string, fotoUrl: string) {
+        try {
+            await prendasApi.removeFoto(prenda.id, fotoId)
+            // Eliminar del Storage también
+            const urlObj = new URL(fotoUrl)
+            const storagePath = urlObj.pathname.split('/object/public/prendas/')[1]
+            if (storagePath) await supabase.storage.from('prendas').remove([storagePath])
+            setFotos(f => f.filter(x => x.id !== fotoId))
+        } catch (e: any) {
+            setError(e.message || 'Error al eliminar foto')
+        }
+    }
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between p-5 border-b border-white/5">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-5 border-b border-white/5 sticky top-0 bg-zinc-900 z-10">
                     <div>
                         <h2 className="text-white font-black uppercase text-sm tracking-wide">Editar prenda</h2>
                         <p className="text-zinc-500 text-xs mt-0.5">{prenda.categoria?.nombre} · Talle {prenda.talle?.nombre}</p>
                     </div>
                     <button onClick={onClose} className="text-zinc-500 hover:text-white text-xl leading-none">✕</button>
                 </div>
+
+                {/* Fotos */}
+                <div className="p-5 border-b border-white/5 space-y-3">
+                    <label className="label">Fotos</label>
+                    <div className="grid grid-cols-3 gap-2">
+                        {fotos.map(foto => (
+                            <div key={foto.id} className="relative aspect-square rounded-xl overflow-hidden group">
+                                <img src={foto.url} alt="" className="w-full h-full object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={() => handleEliminarFoto(foto.id, foto.url)}
+                                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={() => inputFotoRef.current?.click()}
+                            disabled={subiendoFoto}
+                            className="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-orange-500/40 flex flex-col items-center justify-center gap-1 text-zinc-600 hover:text-orange-500 transition-all disabled:opacity-40"
+                        >
+                            {subiendoFoto ? (
+                                <span className="text-xs">Subiendo...</span>
+                            ) : (
+                                <>
+                                    <span className="text-2xl">+</span>
+                                    <span className="text-[10px] uppercase">Foto</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    <input
+                        ref={inputFotoRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleFotoChange}
+                    />
+                </div>
+
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
                     <div>
                         <label className="label">Precio de venta</label>
@@ -241,12 +332,12 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
                             <option value="RETIRADO">RETIRADO</option>
                         </select>
                     </div>
-                    {error && <p className="text-red-400 text-sm">{error}</p>}
+                    {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>}
                     <div className="flex gap-3 pt-1">
                         <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase hover:border-white/20 transition-colors">
                             Cancelar
                         </button>
-                        <button type="submit" disabled={guardando} className="flex-1 py-2.5 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400 disabled:opacity-50 transition-colors">
+                        <button type="submit" disabled={guardando || subiendoFoto} className="flex-1 py-2.5 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400 disabled:opacity-50 transition-colors">
                             {guardando ? 'Guardando...' : 'Guardar'}
                         </button>
                     </div>

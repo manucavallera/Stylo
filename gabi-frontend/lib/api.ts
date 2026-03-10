@@ -57,6 +57,9 @@ export const prendasApi = {
     clavos: (dias = 30) => api.get<Prenda[]>(`/prendas/clavos?dias=${dias}`),
     actualizar: (id: string, data: Partial<Prenda>) => api.put<Prenda>(`/prendas/${id}`, data),
     eliminar: (id: string) => api.delete(`/prendas/${id}`),
+    addFoto: (id: string, url: string, orden: number) =>
+        api.post<{ id: string; url: string; orden: number }>(`/prendas/${id}/fotos`, { url, orden }),
+    removeFoto: (id: string, fotoId: string) => api.delete(`/prendas/${id}/fotos/${fotoId}`),
 }
 
 export const fardosApi = {
