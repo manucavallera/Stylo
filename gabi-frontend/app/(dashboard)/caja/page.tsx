@@ -10,6 +10,7 @@ export default function CajaPage() {
     const [modalAbrir, setModalAbrir] = useState(false)
     const [modalCerrar, setModalCerrar] = useState(false)
     const [modalGasto, setModalGasto] = useState(false)
+    const [historial, setHistorial] = useState<Caja[]>([])
 
     async function cargar() {
         setLoading(true)
@@ -25,7 +26,14 @@ export default function CajaPage() {
         }
     }
 
-    useEffect(() => { cargar() }, [])
+    async function cargarHistorial() {
+        try {
+            const data = await cajaApi.historial()
+            setHistorial(data.filter((c: Caja) => c.estado === 'CERRADA'))
+        } catch {}
+    }
+
+    useEffect(() => { cargar(); cargarHistorial() }, [])
 
     if (loading) return (
         <div className="space-y-4">
@@ -154,6 +162,33 @@ export default function CajaPage() {
                     onClose={() => setModalGasto(false)}
                     onGuardado={() => { setModalGasto(false); cargar() }}
                 />
+            )}
+
+            {/* Historial */}
+            {historial.length > 0 && (
+                <div className="space-y-3">
+                    <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">Historial de cajas</h2>
+                    <div className="space-y-2">
+                        {historial.map(c => (
+                            <div key={c.id} className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-white text-sm font-bold">
+                                        {new Date(c.fecha).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                    </p>
+                                    <p className="text-zinc-500 text-xs">Apertura: ${Number(c.montoApertura).toLocaleString('es-AR')}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-white font-black">${Number(c.montoReal ?? 0).toLocaleString('es-AR')}</p>
+                                    {c.diferencia !== undefined && c.diferencia !== null && (
+                                        <p className={`text-xs font-bold ${Number(c.diferencia) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {Number(c.diferencia) >= 0 ? '+' : ''}${Number(c.diferencia).toLocaleString('es-AR')}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             )}
         </div>
     )
