@@ -75,7 +75,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {[
                         { href: '/pos', icon: '🛒', label: 'Nueva venta', desc: 'POS rápido' },
-                        { href: '/prendas', icon: '👗', label: 'Ver prendas', desc: 'Stock disponible' },
+                        { href: '/prendas', icon: '👕', label: 'Ver prendas', desc: 'Stock disponible' },
                         { href: '/reservas', icon: '🔒', label: 'Reservas', desc: 'Gestionar activas' },
                         { href: '/fardos', icon: '📦', label: 'Fardos', desc: 'Abrir / registrar' },
                         { href: '/caja', icon: '💰', label: 'Caja del día', desc: 'Abrir / cerrar' },

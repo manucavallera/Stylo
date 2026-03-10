@@ -122,7 +122,7 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                 {prenda.fotos?.[0] ? (
                     <img src={prenda.fotos[0].url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl text-zinc-700">👗</div>
+                    <div className="w-full h-full flex items-center justify-center text-4xl text-zinc-700">👕</div>
                 )}
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full border text-xs font-bold ${ESTADO_COLORS[prenda.estado]}`}>
                     {prenda.estado}

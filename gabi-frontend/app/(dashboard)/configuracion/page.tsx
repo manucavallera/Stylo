@@ -375,7 +375,7 @@ function GuiaUso() {
         },
         {
             titulo: '3. Gestionar prendas',
-            icono: '👗',
+            icono: '👕',
             pasos: [
                 'Cada prenda tiene un código QR único generado automáticamente',
                 'Podés filtrar por estado (disponible, reservado, vendido), categoría o talle',

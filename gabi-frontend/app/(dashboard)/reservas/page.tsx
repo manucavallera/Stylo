@@ -188,7 +188,7 @@ function ModalNuevaReserva({
                         <label className="label">Prenda</label>
                         {prenda ? (
                             <div className="flex items-center gap-3 bg-zinc-800 border border-white/10 rounded-xl px-4 py-3">
-                                <span className="text-2xl">👗</span>
+                                <span className="text-2xl">👕</span>
                                 <div className="flex-1">
                                     <p className="text-white text-sm font-bold">{prenda.categoria?.nombre}</p>
                                     <p className="text-zinc-500 text-xs">Talle {prenda.talle?.nombre} · ${Number(prenda.precioPromocional ?? prenda.precioVenta).toLocaleString('es-AR')}</p>

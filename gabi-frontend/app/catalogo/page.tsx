@@ -64,7 +64,7 @@ export default async function CatalogoPage() {
 
                 {prendas.length === 0 ? (
                     <div className="text-center py-20">
-                        <p className="text-5xl mb-4">👗</p>
+                        <p className="text-5xl mb-4">👕</p>
                         <p className="text-zinc-500 text-lg font-bold uppercase">No hay prendas disponibles.</p>
                         <p className="text-zinc-700 text-sm mt-2">Volvé pronto o escribinos por WhatsApp.</p>
                     </div>
@@ -95,7 +95,7 @@ function PrendaCard({ prenda }: { prenda: any }) {
                 {prenda.fotos?.[0] ? (
                     <img src={prenda.fotos[0].url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl text-zinc-700">👗</div>
+                    <div className="w-full h-full flex items-center justify-center text-4xl text-zinc-700">👕</div>
                 )}
                 {enPromo && (
                     <div className="absolute top-2 left-2 px-2 py-0.5 rounded-sm bg-orange-500 text-black text-xs font-black uppercase">PROMO</div>
