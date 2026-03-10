@@ -448,56 +448,46 @@ function GuiaFases() {
     const fases = [
         {
             numero: '01',
-            nombre: 'Core del negocio',
+            nombre: 'Core del Negocio',
             estado: 'completada',
             items: [
-                'Carga de fardos con cálculo de costo unitario automático',
-                'Gestión de prendas con código QR único por prenda',
-                'Upload de fotos a Supabase Storage',
-                'Sistema de reservas con expiración configurable',
-                'POS local con soporte de múltiples métodos de pago',
-                'Caja diaria (apertura, cierre y reconciliación)',
-                'Catálogo público con filtros',
-                'Autenticación con Supabase Auth',
-                'Deploy en EasyPanel (backend NestJS + frontend Next.js)',
+                'Carga de fardos: Wizard inteligente con cálculo de costo unitario automático',
+                'Gestión de stock: Inventario real con filtros por categoría y talle',
+                'Upload de fotos: Integración directa con Supabase Storage',
+                'POS Local: Punto de venta con soporte de múltiples métodos de pago',
+                'Caja Diaria: Apertura, cierre y reconciliación de efectivo y digital',
+                'Catálogo Público: Link autogestionado para que los clientes vean el stock 24/7',
             ],
         },
         {
             numero: '02',
-            nombre: 'Comprobantes y reportes',
+            nombre: 'Automatización y Gestión de Reservas',
             estado: 'proxima',
+            subtitulo: 'El "Asistente Virtual"',
             items: [
-                'Generación de comprobante PDF por venta',
-                'Numeración correlativa automática (0001, 0002…)',
-                'Dashboard de reportes: ventas por día, semana y mes',
-                'ROI por fardo (cuánto ganaste vs lo que costó)',
-                'Ranking de categorías y talles más vendidos',
-                'Exportar reportes a CSV/Excel',
-                'Historial de ventas por cliente',
+                'Control de Reservas con Timer: tiempos configurables (30 min, 1h, 2h, 4h o personalizado)',
+                'Visualización de tiempo restante para saber exactamente cuándo vence cada reserva',
+                'WhatsApp — Notificación de Reserva: "¡Hola! Reservamos tu prenda. Tenés hasta las [Hora] para enviar el comprobante"',
+                'WhatsApp — Alerta de Vencimiento: recordatorio automático 15 minutos antes de que la prenda vuelva al catálogo',
+                'WhatsApp — Confirmación de Pago: mensaje automático al confirmar la venta en el sistema',
+                'Expiración Automática: n8n libera la prenda al catálogo si el tiempo se agota sin pago confirmado',
+                'Identidad QR & Fotos: etiquetas QR para escanear y abrir la ficha de la prenda al instante desde el celular',
             ],
         },
         {
             numero: '03',
-            nombre: 'WhatsApp y automatizaciones',
+            nombre: 'Escalabilidad, Inteligencia y Facturación',
             estado: 'futura',
+            subtitulo: 'Crecimiento y Legalidad',
             items: [
-                'Notificación automática por WhatsApp al crear una reserva',
-                'Recordatorio automático antes de que expire una reserva',
-                'Mensaje de confirmación de venta al cliente',
-                'Expiración automática de reservas vencidas (n8n)',
-                'Alerta cuando el stock de una categoría es bajo',
-            ],
-        },
-        {
-            numero: '04',
-            nombre: 'AFIP y facturación',
-            estado: 'futura',
-            items: [
-                'Integración con AFIP para emisión de facturas electrónicas',
-                'CAE automático por cada venta',
-                'Numeración oficial AFIP (ej: 0005-00000123)',
-                'Anulación de comprobantes',
-                'Libro de IVA exportable',
+                'Perfil Dueño (Gabi): acceso total a costos, márgenes de ganancia y reportes privados',
+                'Perfil Vendedor: acceso limitado solo para ventas, reservas y caja (sin ver costos de fardos)',
+                'ROI por fardo: reporte de rentabilidad — cuánto se ganó vs. lo que costó cada bulto',
+                'Reporte de "Clavos": prendas con más de 30 días sin venderse para aplicar liquidaciones',
+                'Factura Electrónica: emisión de comprobantes con CAE automático desde la app',
+                'Numeración Oficial: sincronización correlativa con puntos de venta de AFIP',
+                'Reporte Contable: exportación de ventas en CSV/Excel listo para enviar al contador',
+                'CRM de Clientes: base de datos con talles y categorías preferidas para marketing por WhatsApp',
             ],
         },
     ]
@@ -525,7 +515,12 @@ function GuiaFases() {
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <span className="text-3xl font-black text-white/10 leading-none">{fase.numero}</span>
-                            <h3 className="text-white font-black text-sm uppercase tracking-wide">{fase.nombre}</h3>
+                            <div>
+                                <h3 className="text-white font-black text-sm uppercase tracking-wide">{fase.nombre}</h3>
+                                {(fase as any).subtitulo && (
+                                    <p className="text-zinc-500 text-[10px] uppercase tracking-widest">{(fase as any).subtitulo}</p>
+                                )}
+                            </div>
                         </div>
                         <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap ${badges[fase.estado]}`}>
                             {labels[fase.estado]}
