@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Gabi Store — Sistema de Gestión',
+  title: 'Street & Stylo American — Sistema de Gestión',
   description: 'Panel de administración de fardos, prendas y ventas',
 }
 
