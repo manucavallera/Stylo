@@ -18,7 +18,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendText/manu",
+        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendMedia/manu",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -36,8 +36,24 @@
               "value": "={{ $json.body.telefonoWhatsapp }}"
             },
             {
-              "name": "text",
-              "value": "=Hola {{ $json.body.clienteNombre }}! 👗 Tu reserva para *{{ $json.body.prendaNombre }}* fue creada exitosamente.\n\n⏰ Tenés hasta las *{{ $json.body.fechaExpiracionFormateada }}* para confirmar el pago.\n\nSi no confirmás a tiempo, la reserva se cancela automáticamente."
+              "name": "mediatype",
+              "value": "image"
+            },
+            {
+              "name": "mimetype",
+              "value": "image/jpeg"
+            },
+            {
+              "name": "media",
+              "value": "={{ $json.body.fotoUrl }}"
+            },
+            {
+              "name": "caption",
+              "value": "=¡Hola! Reservamos tu prenda. Tenés hasta las *{{ $json.body.horaExpiracion }}* para enviar el comprobante."
+            },
+            {
+              "name": "fileName",
+              "value": "prenda.jpg"
             }
           ]
         },
@@ -66,7 +82,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendText/manu",
+        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendMedia/manu",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -84,8 +100,24 @@
               "value": "={{ $json.body.telefonoWhatsapp }}"
             },
             {
-              "name": "text",
-              "value": "=✅ Hola {{ $json.body.clienteNombre }}! Tu pago fue confirmado.\n\n*{{ $json.body.prendaNombre }}* queda reservada a tu nombre. ¡Gracias por tu compra! 🎉"
+              "name": "mediatype",
+              "value": "image"
+            },
+            {
+              "name": "mimetype",
+              "value": "image/jpeg"
+            },
+            {
+              "name": "media",
+              "value": "={{ $json.body.fotoUrl }}"
+            },
+            {
+              "name": "caption",
+              "value": "=✅ ¡Tu pago fue confirmado! La prenda queda reservada a tu nombre. ¡Gracias por tu compra!"
+            },
+            {
+              "name": "fileName",
+              "value": "prenda.jpg"
             }
           ]
         },

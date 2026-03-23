@@ -63,7 +63,10 @@ export class ReservasService {
                     fechaExpiracion,
                     estado: 'ACTIVA',
                 },
-                include: { prenda: true, cliente: true },
+                include: {
+                    prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 } } },
+                    cliente: true,
+                },
             });
 
             await tx.prenda.update({
@@ -79,10 +82,9 @@ export class ReservasService {
                 timeZone: 'America/Argentina/Buenos_Aires',
             });
             this.notificarN8n('reserva-creada', {
-                clienteNombre: reserva.cliente.nombre,
                 telefonoWhatsapp: reserva.cliente.telefonoWhatsapp,
-                prendaNombre: reserva.prenda.nombre,
-                fechaExpiracionFormateada: horaExpiracion,
+                horaExpiracion,
+                fotoUrl: reserva.prenda.fotos[0]?.url ?? null,
             });
             return reserva;
         });
@@ -104,13 +106,15 @@ export class ReservasService {
                 estado: 'CONFIRMADA',
                 comprobanteUrl: dto.comprobanteUrl,
             },
-            include: { prenda: true, cliente: true },
+            include: {
+                prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 } } },
+                cliente: true,
+            },
         });
 
         this.notificarN8n('reserva-confirmada', {
-            clienteNombre: reservaConfirmada.cliente.nombre,
             telefonoWhatsapp: reservaConfirmada.cliente.telefonoWhatsapp,
-            prendaNombre: reservaConfirmada.prenda.nombre,
+            fotoUrl: reservaConfirmada.prenda.fotos[0]?.url ?? null,
         });
 
         return reservaConfirmada;
@@ -166,7 +170,7 @@ export class ReservasService {
     findActivas() {
         return this.prisma.reserva.findMany({
             where: { estado: 'ACTIVA' },
-            include: { prenda: { include: { categoria: true, talle: true } }, cliente: true },
+            include: { prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 }, categoria: true, talle: true } }, cliente: true },
             orderBy: { fechaExpiracion: 'asc' },
         });
     }

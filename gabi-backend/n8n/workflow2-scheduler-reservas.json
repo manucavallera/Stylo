@@ -32,7 +32,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ahora = new Date();\nconst items = $input.all();\n\n// Los items vienen como array de reservas desde el backend\nconst reservas = items[0].json;\n\nif (!Array.isArray(reservas)) return [];\n\nconst resultado = [];\n\nfor (const reserva of reservas) {\n  const expiracion = new Date(reserva.fechaExpiracion);\n  const diffMs = expiracion - ahora;\n  const diffMin = diffMs / 1000 / 60;\n\n  // Filtrar las que vencen en entre 14 y 16 minutos\n  if (diffMin >= 14 && diffMin <= 16) {\n    resultado.push({\n      json: {\n        telefonoWhatsapp: reserva.cliente.telefonoWhatsapp,\n        clienteNombre: reserva.cliente.nombre,\n        prendaNombre: reserva.prenda.nombre,\n        minutosRestantes: Math.round(diffMin),\n      }\n    });\n  }\n}\n\nreturn resultado;"
+        "jsCode": "const ahora = new Date();\nconst items = $input.all();\n\nconst reservas = items[0].json;\n\nif (!Array.isArray(reservas)) return [];\n\nconst resultado = [];\n\nfor (const reserva of reservas) {\n  const expiracion = new Date(reserva.fechaExpiracion);\n  const diffMs = expiracion - ahora;\n  const diffMin = diffMs / 1000 / 60;\n\n  // Filtrar las que vencen en entre 14 y 16 minutos\n  if (diffMin >= 14 && diffMin <= 16) {\n    resultado.push({\n      json: {\n        telefonoWhatsapp: reserva.cliente.telefonoWhatsapp,\n        minutosRestantes: Math.round(diffMin),\n        fotoUrl: reserva.prenda.fotos?.[0]?.url ?? null,\n      }\n    });\n  }\n}\n\nreturn resultado;"
       },
       "id": "b1b2c3d4-0003-0003-0003-000000000001",
       "name": "Filtrar próximas a vencer",
@@ -43,7 +43,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendText/manu",
+        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendMedia/manu",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -61,8 +61,24 @@
               "value": "={{ $json.telefonoWhatsapp }}"
             },
             {
-              "name": "text",
-              "value": "=⚠️ Hola {{ $json.clienteNombre }}! Te quedan *{{ $json.minutosRestantes }} minutos* para confirmar el pago de *{{ $json.prendaNombre }}*.\n\nSi no confirmás, la reserva se cancela automáticamente."
+              "name": "mediatype",
+              "value": "image"
+            },
+            {
+              "name": "mimetype",
+              "value": "image/jpeg"
+            },
+            {
+              "name": "media",
+              "value": "={{ $json.fotoUrl }}"
+            },
+            {
+              "name": "caption",
+              "value": "=⚠️ Te quedan *{{ $json.minutosRestantes }} minutos* para confirmar el pago. Si no confirmás, la prenda vuelve al catálogo automáticamente."
+            },
+            {
+              "name": "fileName",
+              "value": "prenda.jpg"
             }
           ]
         },
