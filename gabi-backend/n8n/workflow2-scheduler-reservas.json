@@ -1,0 +1,137 @@
+{
+  "name": "Gabi - Scheduler Reservas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "b1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Cada 1 minuto",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://manu-stylobackend.gygo4l.easypanel.host/reservas/activas",
+        "options": {}
+      },
+      "id": "b1b2c3d4-0002-0002-0002-000000000001",
+      "name": "GET Reservas Activas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ahora = new Date();\nconst items = $input.all();\n\n// Los items vienen como array de reservas desde el backend\nconst reservas = items[0].json;\n\nif (!Array.isArray(reservas)) return [];\n\nconst resultado = [];\n\nfor (const reserva of reservas) {\n  const expiracion = new Date(reserva.fechaExpiracion);\n  const diffMs = expiracion - ahora;\n  const diffMin = diffMs / 1000 / 60;\n\n  // Filtrar las que vencen en entre 14 y 16 minutos\n  if (diffMin >= 14 && diffMin <= 16) {\n    resultado.push({\n      json: {\n        telefonoWhatsapp: reserva.cliente.telefonoWhatsapp,\n        clienteNombre: reserva.cliente.nombre,\n        prendaNombre: reserva.prenda.nombre,\n        minutosRestantes: Math.round(diffMin),\n      }\n    });\n  }\n}\n\nreturn resultado;"
+      },
+      "id": "b1b2c3d4-0003-0003-0003-000000000001",
+      "name": "Filtrar próximas a vencer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "429683C4C977415CAAFCCE10F7D57E11"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.telefonoWhatsapp }}"
+            },
+            {
+              "name": "text",
+              "value": "=⚠️ Hola {{ $json.clienteNombre }}! Te quedan *{{ $json.minutosRestantes }} minutos* para confirmar el pago de *{{ $json.prendaNombre }}*.\n\nSi no confirmás, la reserva se cancela automáticamente."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1b2c3d4-0004-0004-0004-000000000001",
+      "name": "WhatsApp - Recordatorio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://manu-stylobackend.gygo4l.easypanel.host/reservas/expirar-vencidas",
+        "options": {}
+      },
+      "id": "b1b2c3d4-0005-0005-0005-000000000001",
+      "name": "Expirar Vencidas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 520]
+    }
+  ],
+  "connections": {
+    "Cada 1 minuto": {
+      "main": [
+        [
+          {
+            "node": "GET Reservas Activas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Expirar Vencidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Reservas Activas": {
+      "main": [
+        [
+          {
+            "node": "Filtrar próximas a vencer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar próximas a vencer": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

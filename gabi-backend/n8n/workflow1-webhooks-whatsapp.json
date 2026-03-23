@@ -1,0 +1,132 @@
+{
+  "name": "Gabi - Webhooks WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reserva-creada",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook Reserva Creada",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "a1b2c3d4-0001-0001-0001-000000000001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "429683C4C977415CAAFCCE10F7D57E11"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.body.telefonoWhatsapp }}"
+            },
+            {
+              "name": "text",
+              "value": "=Hola {{ $json.body.clienteNombre }}! 👗 Tu reserva para *{{ $json.body.prendaNombre }}* fue creada exitosamente.\n\n⏰ Tenés hasta las *{{ $json.body.fechaExpiracionFormateada }}* para confirmar el pago.\n\nSi no confirmás a tiempo, la reserva se cancela automáticamente."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "WhatsApp - Reserva Creada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reserva-confirmada",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000001",
+      "name": "Webhook Reserva Confirmada",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 520],
+      "webhookId": "a1b2c3d4-0002-0002-0002-000000000001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "429683C4C977415CAAFCCE10F7D57E11"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.body.telefonoWhatsapp }}"
+            },
+            {
+              "name": "text",
+              "value": "=✅ Hola {{ $json.body.clienteNombre }}! Tu pago fue confirmado.\n\n*{{ $json.body.prendaNombre }}* queda reservada a tu nombre. ¡Gracias por tu compra! 🎉"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "WhatsApp - Reserva Confirmada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 520]
+    }
+  ],
+  "connections": {
+    "Webhook Reserva Creada": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Reserva Creada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Reserva Confirmada": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Reserva Confirmada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

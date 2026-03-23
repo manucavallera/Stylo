@@ -83,7 +83,7 @@ export class PrendasService {
     }
 
     async removeFoto(prendaId: string, fotoId: string) {
-        await this.prisma.fotoPrenda.delete({ where: { id: fotoId, prendaId } });
+        await this.prisma.fotoPrenda.deleteMany({ where: { id: fotoId, prendaId } });
     }
 
     // ── Clavos: prendas sin vender después de N días ─────────────

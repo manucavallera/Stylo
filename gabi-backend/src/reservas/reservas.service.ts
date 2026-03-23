@@ -2,6 +2,7 @@ import {
     Injectable,
     NotFoundException,
     BadRequestException,
+    Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -11,7 +12,23 @@ import {
 
 @Injectable()
 export class ReservasService {
+    private readonly logger = new Logger(ReservasService.name);
+    private readonly n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+
     constructor(private readonly prisma: PrismaService) { }
+
+    private async notificarN8n(path: string, body: object) {
+        if (!this.n8nWebhookUrl) return;
+        try {
+            await fetch(`${this.n8nWebhookUrl}/${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+        } catch (err) {
+            this.logger.warn(`n8n webhook ${path} falló: ${err.message}`);
+        }
+    }
 
     // ── Crear reserva ────────────────────────────────────────────
     async create(dto: CreateReservaDto) {
@@ -55,6 +72,19 @@ export class ReservasService {
             });
 
             return reserva;
+        }).then((reserva) => {
+            const horaExpiracion = reserva.fechaExpiracion.toLocaleTimeString('es-AR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'America/Argentina/Buenos_Aires',
+            });
+            this.notificarN8n('reserva-creada', {
+                clienteNombre: reserva.cliente.nombre,
+                telefonoWhatsapp: reserva.cliente.telefonoWhatsapp,
+                prendaNombre: reserva.prenda.nombre,
+                fechaExpiracionFormateada: horaExpiracion,
+            });
+            return reserva;
         });
     }
 
@@ -68,13 +98,22 @@ export class ReservasService {
             );
         }
 
-        return this.prisma.reserva.update({
+        const reservaConfirmada = await this.prisma.reserva.update({
             where: { id },
             data: {
                 estado: 'CONFIRMADA',
                 comprobanteUrl: dto.comprobanteUrl,
             },
+            include: { prenda: true, cliente: true },
         });
+
+        this.notificarN8n('reserva-confirmada', {
+            clienteNombre: reservaConfirmada.cliente.nombre,
+            telefonoWhatsapp: reservaConfirmada.cliente.telefonoWhatsapp,
+            prendaNombre: reservaConfirmada.prenda.nombre,
+        });
+
+        return reservaConfirmada;
     }
 
     // ── Cancelar manualmente ─────────────────────────────────────
