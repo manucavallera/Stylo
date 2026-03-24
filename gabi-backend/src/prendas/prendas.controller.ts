@@ -1,6 +1,7 @@
 import { Controller, Get, Put, Post, Delete, Body, Param, Query, HttpCode } from '@nestjs/common';
 import { PrendasService } from './prendas.service';
 import { UpdatePrendaDto } from './dto/update-prenda.dto';
+import { Public } from '../auth/public.decorator';
 
 @Controller('prendas')
 export class PrendasController {
@@ -29,7 +30,8 @@ export class PrendasController {
         return this.prendasService.findByQr(qrCode);
     }
 
-    // GET /api/v1/prendas/:id
+    // GET /api/v1/prendas/:id — público para escaneo de QR
+    @Public()
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.prendasService.findOne(id);
@@ -49,6 +51,7 @@ export class PrendasController {
     }
 
     // POST /api/v1/prendas/:id/fotos — registrar URL de foto ya subida a Supabase Storage
+    @Public()
     @Post(':id/fotos')
     addFoto(@Param('id') id: string, @Body() body: { url: string; orden?: number }) {
         return this.prendasService.addFoto(id, body.url, body.orden ?? 0);

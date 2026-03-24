@@ -77,7 +77,8 @@ export class FardosService {
         for (const item of dto.items) {
             for (let i = 0; i < item.cantidad; i++) {
                 const prendaId = uuidv4();
-                const qrCode = await QRCode.toDataURL(prendaId, { width: 200, margin: 1 });
+                const frontendUrl = process.env.FRONTEND_URL || 'https://americano-stylo.gygo4l.easypanel.host';
+                const qrCode = await QRCode.toDataURL(`${frontendUrl}/p/${prendaId}`, { width: 200, margin: 1 });
                 prendaData.push({
                     id: prendaId,
                     fardoId: id,
