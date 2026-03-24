@@ -113,10 +113,38 @@ function PrendasInner() {
     )
 }
 
+function ModalQR({ prenda, onClose }: { prenda: Prenda; onClose: () => void }) {
+    const precio = prenda.precioPromocional ?? prenda.precioVenta
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 print:bg-white print:p-0 print:inset-auto print:static" onClick={onClose}>
+            <div className="bg-white rounded-2xl p-6 w-64 text-center" onClick={e => e.stopPropagation()}>
+                <p className="text-black font-black text-sm uppercase tracking-widest mb-1">STREET & STYLO</p>
+                <p className="text-zinc-500 text-xs uppercase mb-3">AMERICAN ★</p>
+                {prenda.qrCode && (
+                    <img src={prenda.qrCode} alt="QR" className="w-40 h-40 mx-auto" />
+                )}
+                <p className="text-black font-black text-lg mt-3">{prenda.categoria?.nombre}</p>
+                <p className="text-zinc-500 text-sm">Talle {prenda.talle?.nombre}</p>
+                <p className="text-black font-black text-xl mt-1">${Number(precio).toLocaleString('es-AR')}</p>
+                {prenda.precioPromocional && (
+                    <p className="text-zinc-400 text-xs line-through">${Number(prenda.precioVenta).toLocaleString('es-AR')}</p>
+                )}
+                <div className="flex gap-2 mt-4 print:hidden">
+                    <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-zinc-200 text-zinc-500 text-xs font-bold uppercase">Cerrar</button>
+                    <button onClick={() => window.print()} className="flex-1 py-2 rounded-xl bg-black text-white text-xs font-black uppercase">Imprimir</button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar: () => void; onEliminar: () => void }) {
     const precio = prenda.precioPromocional ?? prenda.precioVenta
+    const [verQR, setVerQR] = useState(false)
 
     return (
+        <>
+        {verQR && <ModalQR prenda={prenda} onClose={() => setVerQR(false)} />}
         <div className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden hover:border-orange-500/20 transition-all group">
             <div className="aspect-square bg-zinc-800 relative overflow-hidden">
                 {prenda.fotos?.[0] ? (
@@ -134,6 +162,12 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                         className="px-3 py-1.5 bg-orange-500 text-black text-xs font-black uppercase rounded-lg hover:bg-orange-400"
                     >
                         Editar
+                    </button>
+                    <button
+                        onClick={() => setVerQR(true)}
+                        className="px-3 py-1.5 bg-zinc-700 text-white text-xs font-black uppercase rounded-lg hover:bg-zinc-600"
+                    >
+                        QR
                     </button>
                     <button
                         onClick={onEliminar}
@@ -160,6 +194,7 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                 )}
             </div>
         </div>
+        </>
     )
 }
 
