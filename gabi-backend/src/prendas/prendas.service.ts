@@ -28,7 +28,7 @@ export class PrendasService {
                 categoria: true,
                 talle: true,
                 fotos: { orderBy: { orden: 'asc' } },
-                fardo: { select: { id: true, fechaCompra: true, moneda: true } },
+                fardo: { select: { id: true, fechaCompra: true, moneda: true, proveedor: { select: { nombre: true } } } },
             },
             orderBy: { createdAt: 'desc' },
         });
