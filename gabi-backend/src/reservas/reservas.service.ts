@@ -65,7 +65,7 @@ export class ReservasService {
                     estado: 'ACTIVA',
                 },
                 include: {
-                    prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 } } },
+                    prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 }, categoria: true, talle: true } },
                     cliente: true,
                 },
             });
