@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { prendasApi, type Prenda } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 
-const ESTADOS = ['DISPONIBLE', 'RESERVADO', 'VENDIDO', 'FALLA']
+const ESTADOS = ['', 'DISPONIBLE', 'RESERVADO', 'VENDIDO', 'FALLA']
+const ESTADO_LABELS: Record<string, string> = { '': 'Todas' }
 const ESTADO_COLORS: Record<string, string> = {
     DISPONIBLE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     RESERVADO: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -23,12 +24,13 @@ function PrendasInner() {
 
     const [prendas, setPrendas] = useState<Prenda[]>([])
     const [loading, setLoading] = useState(true)
-    const [filtroEstado, setFiltroEstado] = useState('DISPONIBLE')
+    const [filtroEstado, setFiltroEstado] = useState(fardoId ? '' : 'DISPONIBLE')
     const [editando, setEditando] = useState<Prenda | null>(null)
 
     async function cargar() {
         setLoading(true)
-        const params: Record<string, string> = { estado: filtroEstado }
+        const params: Record<string, string> = {}
+        if (filtroEstado) params.estado = filtroEstado
         if (fardoId) params.fardoId = fardoId
         prendasApi.listar(params).then(setPrendas).finally(() => setLoading(false))
     }
@@ -67,11 +69,11 @@ function PrendasInner() {
                         key={e}
                         onClick={() => setFiltroEstado(e)}
                         className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-all ${filtroEstado === e
-                            ? ESTADO_COLORS[e]
+                            ? (ESTADO_COLORS[e] || 'bg-white/10 text-white border-white/20')
                             : 'border-white/10 text-zinc-400 hover:border-white/20 hover:text-white'
                         }`}
                     >
-                        {e}
+                        {ESTADO_LABELS[e] || e}
                     </button>
                 ))}
             </div>
@@ -84,7 +86,7 @@ function PrendasInner() {
                 </div>
             ) : prendas.length === 0 ? (
                 <div className="text-center py-20 text-zinc-500">
-                    No hay prendas en estado {filtroEstado}
+                    No hay prendas{filtroEstado ? ` en estado ${filtroEstado}` : ''}
                 </div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
