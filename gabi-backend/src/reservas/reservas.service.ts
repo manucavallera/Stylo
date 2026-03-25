@@ -138,6 +138,7 @@ export class ReservasService {
                 where: { id: reserva.prendaId },
                 data: { estado: 'DISPONIBLE' },
             });
+            return { ok: true };
         });
     }
 
