@@ -31,6 +31,12 @@ export class FardosController {
         return this.fardosService.abrirFardo(id, dto);
     }
 
+    // POST /api/v1/fardos/:id/publicar-grupo — envía prendas al grupo de WhatsApp
+    @Post(':id/publicar-grupo')
+    publicarAlGrupo(@Param('id') id: string) {
+        return this.fardosService.publicarAlGrupo(id);
+    }
+
     // GET /api/v1/fardos/:id/roi — análisis de rentabilidad del fardo
     @Get(':id/roi')
     getRoi(@Param('id') id: string) {

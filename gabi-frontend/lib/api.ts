@@ -67,6 +67,7 @@ export const fardosApi = {
     uno: (id: string) => api.get<Fardo>(`/fardos/${id}`),
     crear: (data: NuevoFardo) => api.post<Fardo>('/fardos', data),
     abrir: (id: string, data: AbrirFardo) => api.post(`/fardos/${id}/abrir`, data),
+    publicarAlGrupo: (id: string) => api.post<{ enviadas: number; sinFoto: number; errores: string[] }>(`/fardos/${id}/publicar-grupo`, {}),
     roi: (id: string) => api.get<RoiFardo>(`/fardos/${id}/roi`),
 }
 

@@ -117,6 +117,68 @@ export class FardosService {
         };
     }
 
+    // ── Publicar prendas al grupo de WhatsApp ───────────────────
+    async publicarAlGrupo(id: string) {
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE || 'manu';
+        const groupId = process.env.WHATSAPP_GROUP_ID;
+
+        if (!evolutionApiUrl || !evolutionApiKey || !groupId) {
+            throw new BadRequestException(
+                'Faltan variables de entorno: EVOLUTION_API_URL, EVOLUTION_API_KEY o WHATSAPP_GROUP_ID',
+            );
+        }
+
+        const fardo = await this.findOne(id);
+        const prendas: any[] = fardo.prendas;
+
+        const conFoto = prendas.filter(p => p.estado === 'DISPONIBLE' && p.fotos?.length > 0);
+        const sinFoto = prendas.filter(p => p.estado === 'DISPONIBLE' && !p.fotos?.length).length;
+
+        let enviadas = 0;
+        const errores: string[] = [];
+
+        for (const prenda of conFoto) {
+            const foto = prenda.fotos[0];
+            const categoria = prenda.categoria?.nombre ?? 'Prenda';
+            const talle = prenda.talle?.nombre ?? '';
+            const precio = Number(prenda.precioVenta).toLocaleString('es-AR');
+            const caption =
+                `${categoria}${talle ? ` — Talle ${talle}` : ''}\n` +
+                `💰 $${precio}\n` +
+                `📲 Para reservar escribí: *reservar ${prenda.id}*`;
+
+            try {
+                const res = await fetch(
+                    `${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                        body: JSON.stringify({
+                            number: groupId,
+                            mediatype: 'image',
+                            mimetype: 'image/jpeg',
+                            media: foto.url,
+                            caption,
+                            fileName: 'prenda.jpg',
+                        }),
+                    },
+                );
+                if (res.ok) {
+                    enviadas++;
+                } else {
+                    const texto = await res.text();
+                    errores.push(`${prenda.id}: ${texto}`);
+                }
+            } catch (err: any) {
+                errores.push(`${prenda.id}: ${err.message}`);
+            }
+        }
+
+        return { enviadas, sinFoto, errores };
+    }
+
     // ── ROI del fardo (Analytics básico) ────────────────────────
     async getRoi(id: string) {
         const fardo = await this.findOne(id);

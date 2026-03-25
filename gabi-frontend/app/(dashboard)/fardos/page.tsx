@@ -16,6 +16,7 @@ export default function FardosPage() {
     const [fardoAbriendo, setFardoAbriendo] = useState<Fardo | null>(null)
     const [fardoAgregando, setFardoAgregando] = useState<Fardo | null>(null)
     const [fardoPrecio, setFardoPrecio] = useState<Fardo | null>(null)
+    const [fardoPublicando, setFardoPublicando] = useState<Fardo | null>(null)
 
     async function cargar() {
         setLoading(true)
@@ -54,6 +55,7 @@ export default function FardosPage() {
                             onAbrir={() => setFardoAbriendo(f)}
                             onAgregarPrendas={() => setFardoAgregando(f)}
                             onCambiarPrecio={() => setFardoPrecio(f)}
+                            onPublicarGrupo={() => setFardoPublicando(f)}
                         />
                     ))}
                 </div>
@@ -90,11 +92,18 @@ export default function FardosPage() {
                     onGuardado={() => { setFardoPrecio(null); cargar() }}
                 />
             )}
+
+            {fardoPublicando && (
+                <ModalPublicarGrupo
+                    fardo={fardoPublicando}
+                    onClose={() => setFardoPublicando(null)}
+                />
+            )}
         </div>
     )
 }
 
-function FardoRow({ fardo, onAbrir, onAgregarPrendas, onCambiarPrecio }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onCambiarPrecio: () => void }) {
+function FardoRow({ fardo, onAbrir, onAgregarPrendas, onCambiarPrecio, onPublicarGrupo }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onCambiarPrecio: () => void; onPublicarGrupo: () => void }) {
     return (
         <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
@@ -126,6 +135,9 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onCambiarPrecio }: { fardo
                         </button>
                         <button onClick={onCambiarPrecio} className="px-4 py-2 border border-orange-500/30 text-orange-400 font-black text-xs uppercase rounded-xl hover:bg-orange-500/10 transition-colors whitespace-nowrap">
                             $ Precio
+                        </button>
+                        <button onClick={onPublicarGrupo} className="px-4 py-2 border border-sky-500/30 text-sky-400 font-black text-xs uppercase rounded-xl hover:bg-sky-500/10 transition-colors whitespace-nowrap">
+                            Publicar grupo
                         </button>
                     </>
                 )}
@@ -410,6 +422,71 @@ function ModalCambiarPrecio({ fardo, onClose, onGuardado }: { fardo: Fardo; onCl
                     </button>
                 </div>
             </form>
+        </Modal>
+    )
+}
+
+function ModalPublicarGrupo({ fardo, onClose }: { fardo: Fardo; onClose: () => void }) {
+    const [estado, setEstado] = useState<'confirm' | 'loading' | 'done'>('confirm')
+    const [resultado, setResultado] = useState<{ enviadas: number; sinFoto: number; errores: string[] } | null>(null)
+    const [error, setError] = useState('')
+
+    async function publicar() {
+        setEstado('loading')
+        setError('')
+        try {
+            const res = await fardosApi.publicarAlGrupo(fardo.id)
+            setResultado(res)
+            setEstado('done')
+        } catch (e: any) {
+            setError(e.message)
+            setEstado('confirm')
+        }
+    }
+
+    return (
+        <Modal title="Publicar al grupo de WhatsApp" onClose={onClose}>
+            {estado === 'confirm' && (
+                <div className="space-y-4">
+                    <p className="text-zinc-400 text-sm">
+                        Se van a enviar todas las prendas <span className="text-white font-bold">DISPONIBLES con foto</span> del fardo de <span className="text-white font-bold">{fardo.proveedor?.nombre}</span> al grupo de WhatsApp.
+                    </p>
+                    <p className="text-zinc-500 text-xs">Las prendas sin foto se van a omitir.</p>
+                    {error && <p className="text-red-400 text-sm">{error}</p>}
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase">Cancelar</button>
+                        <button type="button" onClick={publicar} className="flex-1 py-2.5 rounded-xl bg-sky-500 text-black text-sm font-black uppercase hover:bg-sky-400">
+                            Publicar
+                        </button>
+                    </div>
+                </div>
+            )}
+            {estado === 'loading' && (
+                <div className="py-8 text-center space-y-3">
+                    <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-zinc-400 text-sm">Enviando prendas al grupo...</p>
+                </div>
+            )}
+            {estado === 'done' && resultado && (
+                <div className="space-y-4">
+                    <div className="p-4 bg-zinc-800 rounded-xl text-center space-y-1">
+                        <p className="text-3xl font-black text-sky-400">{resultado.enviadas}</p>
+                        <p className="text-zinc-400 text-sm uppercase tracking-widest">prendas publicadas</p>
+                    </div>
+                    {resultado.sinFoto > 0 && (
+                        <p className="text-zinc-500 text-sm text-center">{resultado.sinFoto} prenda{resultado.sinFoto !== 1 ? 's' : ''} sin foto — no se enviaron</p>
+                    )}
+                    {resultado.errores.length > 0 && (
+                        <div className="p-3 bg-red-500/10 rounded-xl">
+                            <p className="text-red-400 text-xs font-bold mb-1">{resultado.errores.length} errores:</p>
+                            {resultado.errores.map((e, i) => <p key={i} className="text-red-400 text-xs">{e}</p>)}
+                        </div>
+                    )}
+                    <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-zinc-800 text-white text-sm font-black uppercase hover:bg-zinc-700">
+                        Cerrar
+                    </button>
+                </div>
+            )}
         </Modal>
     )
 }
