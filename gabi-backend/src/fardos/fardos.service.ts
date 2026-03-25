@@ -33,7 +33,7 @@ export class FardosService {
     findAll() {
         return this.prisma.fardo.findMany({
             include: { proveedor: true },
-            orderBy: { fechaCompra: 'desc' },
+            orderBy: { proveedor: { nombre: 'asc' } },
         });
     }
 
@@ -141,14 +141,15 @@ export class FardosService {
 
         for (const prenda of conFoto) {
             const foto = prenda.fotos[0];
-            const categoria = prenda.categoria?.nombre ?? 'Prenda';
-            const talle = prenda.talle?.nombre ?? '';
+            const categoria = prenda.categoria?.nombre || '';
+            const talle = prenda.talle?.nombre || '';
             const precio = Number(prenda.precioVenta).toLocaleString('es-AR');
             const codigo = prenda.id.substring(0, 8);
+            const desc = [categoria, talle].filter(Boolean).join(' — Talle ');
             const caption =
-                `${categoria}${talle ? ` — Talle ${talle}` : ''}\n` +
+                `${desc || 'Prenda'}\n` +
                 `💰 $${precio}\n` +
-                `📲 Para reservar escribí: *reservar ${codigo}*`;
+                `📲 Para reservar: *reservar ${codigo}*`;
 
             try {
                 const res = await fetch(
