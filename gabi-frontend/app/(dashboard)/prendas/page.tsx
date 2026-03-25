@@ -189,7 +189,7 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                 </div>
                 {prenda.fardo && (
                     <p className="text-zinc-600 text-xs mt-0.5 truncate">
-                        {prenda.fardo.proveedor?.nombre ?? 'Fardo'} · {new Date(prenda.fardo.fechaCompra).toLocaleDateString('es-AR')}
+                        {prenda.fardo.proveedor?.nombre ?? 'Fardo'}
                     </p>
                 )}
             </div>
