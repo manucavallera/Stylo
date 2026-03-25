@@ -69,7 +69,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const reserva = $json;\nconst hora = new Date(reserva.fechaExpiracion).toLocaleTimeString('es-AR', {\n  hour: '2-digit',\n  minute: '2-digit',\n  timeZone: 'America/Argentina/Buenos_Aires'\n});\nconst cat = reserva.prenda?.categoria?.nombre || 'Prenda';\nconst talle = reserva.prenda?.talle?.nombre || '';\nconst desc = cat + (talle ? ` — Talle ${talle}` : '');\nconst remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nconst mensaje = `✅ ¡Te reservé la prenda!\\n\\n*${desc}*\\n\\nTenés hasta las *${hora}* para enviarnos el comprobante de pago. Si no lo mandás a tiempo, la reserva se cancela automáticamente. 🙌`;\nreturn [{ json: { remoteJid, mensaje } }];"
+        "jsCode": "const reserva = $json;\nconst hora = new Date(reserva.fechaExpiracion).toLocaleTimeString('es-AR', {\n  hour: '2-digit',\n  minute: '2-digit',\n  timeZone: 'America/Argentina/Buenos_Aires'\n});\nconst cat = reserva.prenda?.categoria?.nombre || 'Prenda';\nconst talle = reserva.prenda?.talle?.nombre || '';\nconst desc = cat + (talle ? ` — Talle ${talle}` : '');\nconst remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nconst fotoUrl = reserva.prenda?.fotos?.[0]?.url || null;\nconst caption = `✅ ¡Te reservé la prenda!\\n\\n*${desc}*\\n\\nTenés hasta las *${hora}* para enviarnos el comprobante de pago. Si no lo mandás a tiempo, la reserva se cancela automáticamente. 🙌`;\nreturn [{ json: { remoteJid, caption, fotoUrl } }];"
       },
       "id": "c1b2c3d4-0005-0005-0005-000000000001",
       "name": "Formatear Confirmación",
@@ -80,7 +80,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://manu-evolution-api:8080/message/sendText/manu",
+        "url": "http://manu-evolution-api:8080/message/sendMedia/manu",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
@@ -89,7 +89,11 @@
         "bodyParameters": {
           "parameters": [
             { "name": "number", "value": "={{ $json.remoteJid }}" },
-            { "name": "text", "value": "={{ $json.mensaje }}" }
+            { "name": "mediatype", "value": "image" },
+            { "name": "mimetype", "value": "image/jpeg" },
+            { "name": "media", "value": "={{ $json.fotoUrl }}" },
+            { "name": "caption", "value": "={{ $json.caption }}" },
+            { "name": "fileName", "value": "prenda.jpg" }
           ]
         },
         "options": {}
@@ -98,7 +102,8 @@
       "name": "WhatsApp - Confirmación",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 300]
+      "position": [1340, 300],
+      "continueOnFail": true
     },
     {
       "parameters": {
