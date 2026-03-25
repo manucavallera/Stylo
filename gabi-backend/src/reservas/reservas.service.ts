@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
     CreateReservaDto,
     ConfirmarReservaDto,
+    ReservaBotDto,
 } from './dto/create-reserva.dto';
 
 @Injectable()
@@ -164,6 +165,24 @@ export class ReservasService {
         });
 
         return { expiradas: reservasVencidas.length };
+    }
+
+    // ── Reservar desde bot de WhatsApp ──────────────────────────
+    async reservarDesdeBot(dto: ReservaBotDto) {
+        // Upsert cliente por teléfono
+        let cliente = await this.prisma.cliente.findFirst({
+            where: { telefonoWhatsapp: dto.telefonoWhatsapp },
+        });
+        if (!cliente) {
+            cliente = await this.prisma.cliente.create({
+                data: {
+                    nombre: dto.telefonoWhatsapp,
+                    telefonoWhatsapp: dto.telefonoWhatsapp,
+                },
+            });
+        }
+
+        return this.create({ prendaId: dto.prendaId, clienteId: cliente.id });
     }
 
     // ── Listar reservas activas ──────────────────────────────────

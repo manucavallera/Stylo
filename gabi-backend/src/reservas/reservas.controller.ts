@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Param, Body } from '@nestjs/common';
 import { ReservasService } from './reservas.service';
-import { CreateReservaDto, ConfirmarReservaDto } from './dto/create-reserva.dto';
+import { CreateReservaDto, ConfirmarReservaDto, ReservaBotDto } from './dto/create-reserva.dto';
+import { Public } from '../auth/public.decorator';
 
 @Controller('reservas')
 export class ReservasController {
@@ -34,5 +35,12 @@ export class ReservasController {
     @Post('expirar-vencidas')
     expirarVencidas() {
         return this.reservasService.expirarVencidas();
+    }
+
+    // POST /api/v1/reservas/reservar-bot — llamado por n8n al recibir mensaje de WhatsApp
+    @Public()
+    @Post('reservar-bot')
+    reservarDesdeBot(@Body() dto: ReservaBotDto) {
+        return this.reservasService.reservarDesdeBot(dto);
     }
 }

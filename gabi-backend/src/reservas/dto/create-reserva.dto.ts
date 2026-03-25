@@ -15,6 +15,14 @@ export class CreateReservaDto {
     minutosExpiracion?: number;
 }
 
+export class ReservaBotDto {
+    @IsString()
+    telefonoWhatsapp: string;
+
+    @IsString()
+    prendaId: string;
+}
+
 export class ConfirmarReservaDto {
     @IsString()
     @IsOptional()

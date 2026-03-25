@@ -1,0 +1,167 @@
+{
+  "name": "Gabi - Bot Reservas WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mensajes-entrantes",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "c1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook Mensajes",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "c1b2c3d4-0001-0001-0001-000000000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsear webhook de Evolution API\nconst data = $json.data || $json;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\n// Extraer texto del mensaje (imagen con caption o texto plano)\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\n// Buscar patrón: \"reservar {uuid}\"\nconst match = caption.match(/reservar\\s+([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);\nif (!match) return [];\n\nconst prendaId = match[1];\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\n\nreturn [{ json: { prendaId, telefono, remoteJid } }];"
+      },
+      "id": "c1b2c3d4-0002-0002-0002-000000000001",
+      "name": "Parsear Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://manu-stylobackend:3001/api/v1/reservas/reservar-bot",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "telefonoWhatsapp", "value": "={{ $json.telefono }}" },
+            { "name": "prendaId", "value": "={{ $json.prendaId }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0003-0003-0003-000000000001",
+      "name": "Crear Reserva",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.fechaExpiracion }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "exists", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0004-0004-0004-000000000001",
+      "name": "¿Reserva OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const reserva = $json;\nconst hora = new Date(reserva.fechaExpiracion).toLocaleTimeString('es-AR', {\n  hour: '2-digit',\n  minute: '2-digit',\n  timeZone: 'America/Argentina/Buenos_Aires'\n});\nconst cat = reserva.prenda?.categoria?.nombre || 'Prenda';\nconst talle = reserva.prenda?.talle?.nombre || '';\nconst desc = cat + (talle ? ` — Talle ${talle}` : '');\nconst remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nconst mensaje = `✅ ¡Te reservé la prenda!\\n\\n*${desc}*\\n\\nTenés hasta las *${hora}* para enviarnos el comprobante de pago. Si no lo mandás a tiempo, la reserva se cancela automáticamente. 🙌`;\nreturn [{ json: { remoteJid, mensaje } }];"
+      },
+      "id": "c1b2c3d4-0005-0005-0005-000000000001",
+      "name": "Formatear Confirmación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://manu-evolution-api:8080/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.remoteJid }}" },
+            { "name": "text", "value": "={{ $json.mensaje }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0006-0006-0006-000000000001",
+      "name": "WhatsApp - Confirmación",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: 'Lo sentimos, esa prenda ya no está disponible para reservar. 😕' } }];"
+      },
+      "id": "c1b2c3d4-0007-0007-0007-000000000001",
+      "name": "Formatear Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://manu-evolution-api:8080/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.remoteJid }}" },
+            { "name": "text", "value": "={{ $json.mensaje }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0008-0008-0008-000000000001",
+      "name": "WhatsApp - No Disponible",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 520]
+    }
+  ],
+  "connections": {
+    "Webhook Mensajes": {
+      "main": [[{ "node": "Parsear Mensaje", "type": "main", "index": 0 }]]
+    },
+    "Parsear Mensaje": {
+      "main": [[{ "node": "Crear Reserva", "type": "main", "index": 0 }]]
+    },
+    "Crear Reserva": {
+      "main": [[{ "node": "¿Reserva OK?", "type": "main", "index": 0 }]]
+    },
+    "¿Reserva OK?": {
+      "main": [
+        [{ "node": "Formatear Confirmación", "type": "main", "index": 0 }],
+        [{ "node": "Formatear Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Formatear Confirmación": {
+      "main": [[{ "node": "WhatsApp - Confirmación", "type": "main", "index": 0 }]]
+    },
+    "Formatear Error": {
+      "main": [[{ "node": "WhatsApp - No Disponible", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-25T00:00:00.000Z",
+  "versionId": "gabi-bot-reservas-v1"
+}
