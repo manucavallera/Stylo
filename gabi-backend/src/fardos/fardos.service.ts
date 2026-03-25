@@ -144,10 +144,11 @@ export class FardosService {
             const categoria = prenda.categoria?.nombre ?? 'Prenda';
             const talle = prenda.talle?.nombre ?? '';
             const precio = Number(prenda.precioVenta).toLocaleString('es-AR');
+            const codigo = prenda.id.substring(0, 8);
             const caption =
                 `${categoria}${talle ? ` — Talle ${talle}` : ''}\n` +
                 `💰 $${precio}\n` +
-                `📲 Para reservar escribí: *reservar ${prenda.id}*`;
+                `📲 Para reservar escribí: *reservar ${codigo}*`;
 
             try {
                 const res = await fetch(

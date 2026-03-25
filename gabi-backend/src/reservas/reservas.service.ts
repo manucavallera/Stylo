@@ -182,7 +182,13 @@ export class ReservasService {
             });
         }
 
-        return this.create({ prendaId: dto.prendaId, clienteId: cliente.id });
+        // Buscar prenda por código corto (primeros 8 chars del UUID)
+        const prenda = await this.prisma.prenda.findFirst({
+            where: { id: { startsWith: dto.prendaId } },
+        });
+        if (!prenda) throw new NotFoundException('Prenda no encontrada');
+
+        return this.create({ prendaId: prenda.id, clienteId: cliente.id });
     }
 
     // ── Listar reservas activas ──────────────────────────────────
