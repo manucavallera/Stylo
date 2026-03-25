@@ -177,7 +177,7 @@ export class ReservasService {
         if (!cliente) {
             cliente = await this.prisma.cliente.create({
                 data: {
-                    nombre: dto.telefonoWhatsapp,
+                    nombre: dto.nombreCliente || dto.telefonoWhatsapp,
                     telefonoWhatsapp: dto.telefonoWhatsapp,
                 },
             });
@@ -190,6 +190,16 @@ export class ReservasService {
         if (!prenda) throw new NotFoundException('Prenda no encontrada');
 
         return this.create({ prendaId: prenda.id, clienteId: cliente.id });
+    }
+
+    // ── Historial de reservas ────────────────────────────────────
+    findHistorial() {
+        return this.prisma.reserva.findMany({
+            where: { estado: { not: 'ACTIVA' } },
+            include: { prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 }, categoria: true, talle: true } }, cliente: true },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+        });
     }
 
     // ── Listar reservas activas ──────────────────────────────────

@@ -21,6 +21,10 @@ export class ReservaBotDto {
 
     @IsString()
     prendaId: string;
+
+    @IsString()
+    @IsOptional()
+    nombreCliente?: string;
 }
 
 export class ConfirmarReservaDto {

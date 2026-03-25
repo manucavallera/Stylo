@@ -143,6 +143,19 @@ function ModalQR({ prenda, onClose }: { prenda: Prenda; onClose: () => void }) {
 function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar: () => void; onEliminar: () => void }) {
     const precio = prenda.precioPromocional ?? prenda.precioVenta
     const [verQR, setVerQR] = useState(false)
+    const [publicando, setPublicando] = useState(false)
+
+    async function republicar() {
+        if (publicando) return
+        setPublicando(true)
+        try {
+            await fardosApi.publicarPrendaAlGrupo(prenda.id)
+        } catch (e: any) {
+            alert(e.message)
+        } finally {
+            setPublicando(false)
+        }
+    }
 
     return (
         <>
@@ -171,6 +184,11 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                     >
                         QR
                     </button>
+                    {prenda.estado === 'DISPONIBLE' && prenda.fotos?.[0] && (
+                        <button onClick={republicar} disabled={publicando} className="px-3 py-1.5 bg-sky-500/80 text-white text-xs font-black uppercase rounded-lg hover:bg-sky-500 disabled:opacity-50">
+                            {publicando ? '...' : 'WA'}
+                        </button>
+                    )}
                     <button
                         onClick={onEliminar}
                         className="px-3 py-1.5 bg-red-500/80 text-white text-xs font-black uppercase rounded-lg hover:bg-red-500"

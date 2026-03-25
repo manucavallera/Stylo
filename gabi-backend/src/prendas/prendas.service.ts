@@ -86,6 +86,44 @@ export class PrendasService {
         await this.prisma.fotoPrenda.deleteMany({ where: { id: fotoId, prendaId } });
     }
 
+    // ── Publicar prenda individual al grupo de WhatsApp ──────────
+    async publicarAlGrupo(id: string) {
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE || 'manu';
+        const groupId = process.env.WHATSAPP_GROUP_ID;
+
+        if (!evolutionApiUrl || !evolutionApiKey || !groupId) {
+            throw new BadRequestException('Faltan variables de entorno de Evolution API o WHATSAPP_GROUP_ID');
+        }
+
+        const prenda = await this.prisma.prenda.findUnique({
+            where: { id },
+            include: { categoria: true, talle: true, fotos: { orderBy: { orden: 'asc' }, take: 1 } },
+        });
+        if (!prenda) throw new NotFoundException(`Prenda ${id} no encontrada`);
+        if (!prenda.fotos.length) throw new BadRequestException('La prenda no tiene foto');
+
+        const categoria = prenda.categoria?.nombre || '';
+        const talle = prenda.talle?.nombre || '';
+        const precio = Number(prenda.precioVenta).toLocaleString('es-AR');
+        const codigo = prenda.id.substring(0, 8);
+        const desc = [categoria, talle].filter(Boolean).join(' — Talle ');
+        const caption =
+            `${desc || 'Prenda'}\n` +
+            `💰 $${precio}\n` +
+            `📲 Reenviá esta foto al número de la tienda para reservar\u200B${codigo}`;
+
+        const res = await fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+            body: JSON.stringify({ number: groupId, mediatype: 'image', mimetype: 'image/jpeg', media: prenda.fotos[0].url, caption, fileName: 'prenda.jpg' }),
+        });
+
+        if (!res.ok) throw new BadRequestException(`Error al enviar: ${await res.text()}`);
+        return { ok: true };
+    }
+
     // ── Clavos: prendas sin vender después de N días ─────────────
     findClavos(diasSinVenta = 30) {
         const fechaLimite = new Date();

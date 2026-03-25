@@ -68,11 +68,13 @@ export const fardosApi = {
     crear: (data: NuevoFardo) => api.post<Fardo>('/fardos', data),
     abrir: (id: string, data: AbrirFardo) => api.post(`/fardos/${id}/abrir`, data),
     publicarAlGrupo: (id: string) => api.post<{ enviadas: number; sinFoto: number; errores: string[] }>(`/fardos/${id}/publicar-grupo`, {}),
+    publicarPrendaAlGrupo: (id: string) => api.post(`/prendas/${id}/publicar-grupo`, {}),
     roi: (id: string) => api.get<RoiFardo>(`/fardos/${id}/roi`),
 }
 
 export const reservasApi = {
     activas: () => api.get<Reserva[]>('/reservas/activas'),
+    historial: () => api.get<Reserva[]>('/reservas/historial'),
     crear: (data: NuevaReserva) => api.post<Reserva>('/reservas', data),
     confirmar: (id: string, data?: { comprobanteUrl?: string }) =>
         api.post(`/reservas/${id}/confirmar`, data ?? {}),

@@ -50,6 +50,12 @@ export class PrendasController {
         return this.prendasService.remove(id);
     }
 
+    // POST /api/v1/prendas/:id/publicar-grupo
+    @Post(':id/publicar-grupo')
+    publicarAlGrupo(@Param('id') id: string) {
+        return this.prendasService.publicarAlGrupo(id);
+    }
+
     // POST /api/v1/prendas/:id/fotos — registrar URL de foto ya subida a Supabase Storage
     @Public()
     @Post(':id/fotos')

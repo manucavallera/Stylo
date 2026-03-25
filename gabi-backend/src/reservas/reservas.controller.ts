@@ -19,6 +19,12 @@ export class ReservasController {
         return this.reservasService.findActivas();
     }
 
+    // GET /api/v1/reservas/historial
+    @Get('historial')
+    findHistorial() {
+        return this.reservasService.findHistorial();
+    }
+
     // POST /api/v1/reservas/:id/confirmar — cliente pagó
     @Post(':id/confirmar')
     confirmar(@Param('id') id: string, @Body() dto: ConfirmarReservaDto) {

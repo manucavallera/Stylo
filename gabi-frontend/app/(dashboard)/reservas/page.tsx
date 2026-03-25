@@ -32,20 +32,22 @@ export default function ReservasPage() {
     const [error, setError] = useState('')
     const [mostrarModal, setMostrarModal] = useState(false)
     const [clientes, setClientes] = useState<Cliente[]>([])
-    // Cuando se crea un cliente nuevo en el modal, lo agregamos al listado local
+    const [tab, setTab] = useState<'activas' | 'historial'>('activas')
+
     function agregarCliente(c: Cliente) {
         setClientes(prev => prev.find(x => x.id === c.id) ? prev : [...prev, c])
     }
 
     async function cargar() {
         setLoading(true)
-        reservasApi.activas().then(setReservas).finally(() => setLoading(false))
+        const fn = tab === 'activas' ? reservasApi.activas() : reservasApi.historial()
+        fn.then(setReservas).finally(() => setLoading(false))
     }
 
     useEffect(() => {
         cargar()
         clientesApi.listar().then(setClientes).catch(() => null)
-    }, [])
+    }, [tab])
 
     async function confirmar(id: string) {
         setAccionando(id)
@@ -79,22 +81,19 @@ export default function ReservasPage() {
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div>
                     <h1 className="text-2xl font-black text-white uppercase">Reservas</h1>
-                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">{reservas.length} activas</p>
+                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">{reservas.length} {tab === 'activas' ? 'activas' : 'en historial'}</p>
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={cargar}
-                        className="px-4 py-2 border border-white/10 text-zinc-400 text-xs font-bold uppercase rounded-xl hover:border-white/20 transition-colors"
-                    >
-                        Actualizar
-                    </button>
-                    <button
-                        onClick={() => setMostrarModal(true)}
-                        className="px-4 py-2 bg-orange-500 text-black text-xs font-black uppercase rounded-xl hover:bg-orange-400 transition-colors"
-                    >
-                        + Nueva
-                    </button>
+                    <button onClick={cargar} className="px-4 py-2 border border-white/10 text-zinc-400 text-xs font-bold uppercase rounded-xl hover:border-white/20 transition-colors">Actualizar</button>
+                    {tab === 'activas' && (
+                        <button onClick={() => setMostrarModal(true)} className="px-4 py-2 bg-orange-500 text-black text-xs font-black uppercase rounded-xl hover:bg-orange-400 transition-colors">+ Nueva</button>
+                    )}
                 </div>
+            </div>
+
+            <div className="flex gap-2">
+                <button onClick={() => setTab('activas')} className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-all ${tab === 'activas' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}>Activas</button>
+                <button onClick={() => setTab('historial')} className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-all ${tab === 'historial' ? 'bg-zinc-500/10 text-zinc-300 border-zinc-500/20' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}>Historial</button>
             </div>
 
             {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>}
@@ -104,10 +103,10 @@ export default function ReservasPage() {
                     {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-zinc-900 rounded-2xl animate-pulse" />)}
                 </div>
             ) : reservas.length === 0 ? (
-                <div className="text-center py-20 text-zinc-500">No hay reservas activas</div>
+                <div className="text-center py-20 text-zinc-500">No hay reservas</div>
             ) : (
                 <div className="space-y-3">
-                    {reservas.map(r => <ReservaRow key={r.id} reserva={r} accionando={accionando} onConfirmar={confirmar} onCancelar={cancelar} />)}
+                    {reservas.map(r => <ReservaRow key={r.id} reserva={r} accionando={accionando} esHistorial={tab === 'historial'} onConfirmar={confirmar} onCancelar={cancelar} />)}
                 </div>
             )}
 
@@ -286,18 +285,31 @@ function ModalNuevaReserva({
     )
 }
 
-function ReservaRow({ reserva: r, accionando, onConfirmar, onCancelar }: {
-    reserva: any; accionando: string | null; onConfirmar: (id: string) => void; onCancelar: (id: string) => void
+const ESTADO_HISTORIAL: Record<string, string> = {
+    CONFIRMADA: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    CANCELADA: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+    EXPIRADA: 'bg-red-500/10 text-red-400 border-red-500/20',
+}
+
+function ReservaRow({ reserva: r, accionando, esHistorial, onConfirmar, onCancelar }: {
+    reserva: any; accionando: string | null; esHistorial: boolean; onConfirmar: (id: string) => void; onCancelar: (id: string) => void
 }) {
     const { texto, urgente } = useTiempoRestante(r.fechaExpiracion)
     const vencida = new Date(r.fechaExpiracion) < new Date()
 
     return (
-        <div key={r.id} className={`bg-zinc-900 border rounded-2xl p-4 sm:p-5 ${vencida ? 'border-red-500/20' : urgente ? 'border-amber-500/30' : 'border-white/5'}`}>
+        <div key={r.id} className={`bg-zinc-900 border rounded-2xl p-4 sm:p-5 ${esHistorial ? 'border-white/5 opacity-80' : vencida ? 'border-red-500/20' : urgente ? 'border-amber-500/30' : 'border-white/5'}`}>
             <div className="flex items-center gap-2 mb-2">
+                {esHistorial ? (
+                    <span className={`px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase ${ESTADO_HISTORIAL[r.estado] || 'bg-zinc-700 text-zinc-400 border-zinc-600'}`}>
+                        {r.estado}
+                    </span>
+                ) : (
                 <span className={`px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase ${vencida ? 'bg-red-500/10 text-red-400 border-red-500/20' : urgente ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse' : 'bg-zinc-700 text-zinc-300 border-zinc-600'}`}>
                     ⏱ {texto}
                 </span>
+                )}
+                <span className="text-zinc-600 text-xs">{new Date(r.createdAt).toLocaleDateString('es-AR')}</span>
             </div>
             <p className="text-white font-bold">{r.cliente?.nombre ?? 'Cliente desconocido'}</p>
             {r.cliente?.telefonoWhatsapp && (
@@ -316,7 +328,7 @@ function ReservaRow({ reserva: r, accionando, onConfirmar, onCancelar }: {
             <p className="text-orange-400 font-bold mb-3">
                 ${Number(r.prenda?.precioVenta).toLocaleString('es-AR')}
             </p>
-            <div className="flex gap-2 flex-wrap">
+            {!esHistorial && <div className="flex gap-2 flex-wrap">
                 {urgente && r.cliente?.telefonoWhatsapp && (
                     <a
                         href={`https://wa.me/${r.cliente.telefonoWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${r.cliente.nombre}! Tu reserva vence en menos de 30 minutos. ¿Confirmás el pago?`)}`}
@@ -341,7 +353,7 @@ function ReservaRow({ reserva: r, accionando, onConfirmar, onCancelar }: {
                 >
                     ✕ Cancelar
                 </button>
-            </div>
+            </div>}
         </div>
     )
 }
