@@ -149,7 +149,7 @@ export class FardosService {
             const caption =
                 `${desc || 'Prenda'}\n` +
                 `💰 $${precio}\n` +
-                `📲 Para reservar: *reservar ${codigo}*`;
+                `📲 Reenviá esta foto al número de la tienda para reservar\u200B${codigo}`;
 
             try {
                 const res = await fetch(
