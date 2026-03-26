@@ -50,10 +50,10 @@ export class ReservasController {
         return this.reservasService.reservarDesdeBot(dto);
     }
 
-    // POST /api/v1/reservas/confirmar-por-bot — cliente manda foto del comprobante al bot
+    // POST /api/v1/reservas/recibir-comprobante — cliente manda foto del comprobante al bot
     @Public()
-    @Post('confirmar-por-bot')
-    confirmarPorBot(@Body() dto: ConfirmarPorBotDto) {
-        return this.reservasService.confirmarPorBot(dto);
+    @Post('recibir-comprobante')
+    recibirComprobante(@Body() dto: ConfirmarPorBotDto) {
+        return this.reservasService.recibirComprobante(dto);
     }
 }

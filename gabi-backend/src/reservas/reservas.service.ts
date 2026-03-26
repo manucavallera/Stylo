@@ -193,20 +193,25 @@ export class ReservasService {
         return this.create({ prendaId: prenda.id, clienteId: cliente.id });
     }
 
-    // ── Confirmar reserva desde bot (cliente manda foto del comprobante) ──
-    async confirmarPorBot(dto: ConfirmarPorBotDto) {
+    // ── Recibir comprobante desde bot (guarda URL, NO confirma la venta) ──
+    async recibirComprobante(dto: ConfirmarPorBotDto) {
         const cliente = await this.prisma.cliente.findFirst({
             where: { telefonoWhatsapp: dto.telefonoWhatsapp },
         });
-        if (!cliente) throw new NotFoundException('No encontramos una reserva activa para tu número');
+        if (!cliente) return { ok: false };
 
         const reserva = await this.prisma.reserva.findFirst({
             where: { clienteId: cliente.id, estado: 'ACTIVA' },
             orderBy: { createdAt: 'desc' },
         });
-        if (!reserva) throw new NotFoundException('No tenés ninguna reserva activa en este momento');
+        if (!reserva) return { ok: false };
 
-        return this.confirmar(reserva.id, { comprobanteUrl: dto.comprobanteUrl });
+        await this.prisma.reserva.update({
+            where: { id: reserva.id },
+            data: { comprobanteUrl: dto.comprobanteUrl },
+        });
+
+        return { ok: true };
     }
 
     // ── Historial de reservas ────────────────────────────────────
