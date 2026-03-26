@@ -97,6 +97,13 @@ export const clientesApi = {
         api.post<Cliente>('/clientes', data),
 }
 
+export const gruposWaApi = {
+    listar: () => api.get<GrupoWhatsapp[]>('/grupos-whatsapp'),
+    crear: (data: { nombre: string; groupId: string }) => api.post<GrupoWhatsapp>('/grupos-whatsapp', data),
+    actualizar: (id: string, data: { nombre?: string; groupId?: string; activo?: boolean }) => api.put<GrupoWhatsapp>(`/grupos-whatsapp/${id}`, data),
+    eliminar: (id: string) => api.delete(`/grupos-whatsapp/${id}`),
+}
+
 export const proveedoresApi = {
     listar: () => api.get<Proveedor[]>('/proveedores'),
     crear: (data: { nombre: string; telefono?: string; notas?: string }) => api.post<Proveedor>('/proveedores', data),
@@ -140,3 +147,4 @@ export interface NuevaReserva { prendaId: string; clienteId: string; minutosExpi
 export interface RoiFardo { costoFardo: number; totalVendido: number; ganancia: number; roi: number; prendasVendidas: number; totalPrendas: number }
 export interface Proveedor { id: string; nombre: string; telefono?: string; notas?: string }
 export interface CategoriaOTalle { id: string; nombre: string }
+export interface GrupoWhatsapp { id: string; nombre: string; groupId: string; activo: boolean }

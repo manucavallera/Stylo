@@ -17,13 +17,35 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parsear webhook de Evolution API\n// En n8n webhook v2 el body llega en $json.body\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\n// Extraer texto del mensaje (imagen con caption o texto plano)\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\n// Buscar patrón: \"reservar {uuid}\"\nconst match = caption.match(/\u200B([a-f0-9]{8})/) || caption.match(/reservar\\s+([a-f0-9]{8})/i);\nif (!match) return [];\n\nconst prendaId = match[1];\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\n\nreturn [{ json: { prendaId, telefono, remoteJid, nombreCliente: data.pushName || null } }];"
+        "jsCode": "// Parsear webhook de Evolution API\n// En n8n webhook v2 el body llega en $json.body\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\nconst nombreCliente = data.pushName || null;\n\n// Caso 1: tiene código invisible → reservar\nconst match = caption.match(/\\u200B([a-f0-9]{8})/) || caption.match(/reservar\\s+([a-f0-9]{8})/i);\nif (match) {\n  return [{ json: { tipo: 'reservar', prendaId: match[1], telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 2: es una imagen sin código → intento de confirmación de pago\nconst mediaUrl = message.imageMessage?.url || message.imageMessage?.jpegThumbnail || null;\nif (message.imageMessage) {\n  return [{ json: { tipo: 'confirmar', telefono, remoteJid, mediaUrl } }];\n}\n\n// Cualquier otro mensaje: ignorar\nreturn [];"
       },
       "id": "c1b2c3d4-0002-0002-0002-000000000001",
       "name": "Parsear Mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-tipo",
+              "leftValue": "={{ $json.tipo }}",
+              "rightValue": "reservar",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0009-0009-0009-000000000001",
+      "name": "¿Reservar o Confirmar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 400]
     },
     {
       "parameters": {
@@ -43,7 +65,7 @@
       "name": "Crear Reserva",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 400],
+      "position": [900, 280],
       "continueOnFail": true
     },
     {
@@ -66,7 +88,7 @@
       "name": "¿Reserva OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [900, 400]
+      "position": [1120, 280]
     },
     {
       "parameters": {
@@ -76,7 +98,7 @@
       "name": "Formatear Confirmación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [1340, 180]
     },
     {
       "parameters": {
@@ -103,7 +125,7 @@
       "name": "WhatsApp - Confirmación",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 300],
+      "position": [1560, 180],
       "continueOnFail": true
     },
     {
@@ -111,10 +133,10 @@
         "jsCode": "const remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: 'Lo sentimos, esa prenda ya no está disponible para reservar. 😕' } }];"
       },
       "id": "c1b2c3d4-0007-0007-0007-000000000001",
-      "name": "Formatear Error",
+      "name": "Formatear Error Reserva",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 520]
+      "position": [1340, 380]
     },
     {
       "parameters": {
@@ -137,7 +159,115 @@
       "name": "WhatsApp - No Disponible",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 520]
+      "position": [1560, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://manu-stylobackend:3001/api/v1/reservas/confirmar-por-bot",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "telefonoWhatsapp", "value": "={{ $json.telefono }}" },
+            { "name": "comprobanteUrl", "value": "={{ $json.mediaUrl }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0010-0010-0010-000000000001",
+      "name": "Confirmar Pago",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 540],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-002",
+              "leftValue": "={{ $json.estado }}",
+              "rightValue": "CONFIRMADA",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0011-0011-0011-000000000001",
+      "name": "¿Pago OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "const remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nconst cat = $json.prenda?.categoria?.nombre || 'Prenda';\nconst talle = $json.prenda?.talle?.nombre || '';\nconst desc = cat + (talle ? ` — Talle ${talle}` : '');\nreturn [{ json: { remoteJid, mensaje: `🎉 ¡Listo! Recibimos tu comprobante y confirmamos la venta de *${desc}*. ¡Gracias por tu compra! 🛍️` } }];"
+      },
+      "id": "c1b2c3d4-0012-0012-0012-000000000001",
+      "name": "Formatear Pago OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "const remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: 'No encontramos ninguna reserva activa para tu número. Si ya se venció el tiempo de reserva, escribinos para que te ayudemos. 😊' } }];"
+      },
+      "id": "c1b2c3d4-0013-0013-0013-000000000001",
+      "name": "Formatear Sin Reserva",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://manu-evolution-api:8080/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.remoteJid }}" },
+            { "name": "text", "value": "={{ $json.mensaje }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0014-0014-0014-000000000001",
+      "name": "WhatsApp - Pago OK",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://manu-evolution-api:8080/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.remoteJid }}" },
+            { "name": "text", "value": "={{ $json.mensaje }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0015-0015-0015-000000000001",
+      "name": "WhatsApp - Sin Reserva",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 620]
     }
   ],
   "connections": {
@@ -145,7 +275,13 @@
       "main": [[{ "node": "Parsear Mensaje", "type": "main", "index": 0 }]]
     },
     "Parsear Mensaje": {
-      "main": [[{ "node": "Crear Reserva", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "¿Reservar o Confirmar?", "type": "main", "index": 0 }]]
+    },
+    "¿Reservar o Confirmar?": {
+      "main": [
+        [{ "node": "Crear Reserva", "type": "main", "index": 0 }],
+        [{ "node": "Confirmar Pago", "type": "main", "index": 0 }]
+      ]
     },
     "Crear Reserva": {
       "main": [[{ "node": "¿Reserva OK?", "type": "main", "index": 0 }]]
@@ -153,14 +289,29 @@
     "¿Reserva OK?": {
       "main": [
         [{ "node": "Formatear Confirmación", "type": "main", "index": 0 }],
-        [{ "node": "Formatear Error", "type": "main", "index": 0 }]
+        [{ "node": "Formatear Error Reserva", "type": "main", "index": 0 }]
       ]
     },
     "Formatear Confirmación": {
       "main": [[{ "node": "WhatsApp - Confirmación", "type": "main", "index": 0 }]]
     },
-    "Formatear Error": {
+    "Formatear Error Reserva": {
       "main": [[{ "node": "WhatsApp - No Disponible", "type": "main", "index": 0 }]]
+    },
+    "Confirmar Pago": {
+      "main": [[{ "node": "¿Pago OK?", "type": "main", "index": 0 }]]
+    },
+    "¿Pago OK?": {
+      "main": [
+        [{ "node": "Formatear Pago OK", "type": "main", "index": 0 }],
+        [{ "node": "Formatear Sin Reserva", "type": "main", "index": 0 }]
+      ]
+    },
+    "Formatear Pago OK": {
+      "main": [[{ "node": "WhatsApp - Pago OK", "type": "main", "index": 0 }]]
+    },
+    "Formatear Sin Reserva": {
+      "main": [[{ "node": "WhatsApp - Sin Reserva", "type": "main", "index": 0 }]]
     }
   },
   "pinData": {},
@@ -169,5 +320,5 @@
   "tags": [],
   "triggerCount": 0,
   "updatedAt": "2026-03-25T00:00:00.000Z",
-  "versionId": "gabi-bot-reservas-v1"
+  "versionId": "gabi-bot-reservas-v2"
 }

@@ -16,6 +16,7 @@ import { ReservasModule } from './reservas/reservas.module';
 import { CajaModule } from './caja/caja.module';
 import { VentasModule } from './ventas/ventas.module';
 import { ComprobantesModule } from './comprobantes/comprobantes.module';
+import { GruposWhatsappModule } from './grupos-whatsapp/grupos-whatsapp.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ComprobantesModule } from './comprobantes/comprobantes.module';
     CajaModule,
     VentasModule,
     ComprobantesModule,
+    GruposWhatsappModule,
   ],
   controllers: [AppController],
   providers: [

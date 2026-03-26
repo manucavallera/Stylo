@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { categoriasApi, tallesApi, proveedoresApi, type CategoriaOTalle, type Proveedor } from '@/lib/api'
+import { categoriasApi, tallesApi, proveedoresApi, gruposWaApi, type CategoriaOTalle, type Proveedor, type GrupoWhatsapp } from '@/lib/api'
 
-type Tab = 'categorias' | 'talles' | 'proveedores' | 'guia'
+type Tab = 'categorias' | 'talles' | 'proveedores' | 'gruposWa' | 'guia'
 
 const TAB_LABELS: Record<Tab, string> = {
     categorias: 'Categorías',
     talles: 'Talles',
     proveedores: 'Proveedores',
+    gruposWa: '📲 Grupos WA',
     guia: '📖 Guía',
 }
 
@@ -22,7 +23,7 @@ export default function ConfiguracionPage() {
                 <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">Categorías · Talles · Proveedores · Guía</p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
                     <button
                         key={t}
@@ -37,6 +38,7 @@ export default function ConfiguracionPage() {
             {tab === 'categorias' && <SeccionSimple titulo="Categorías" apiKey="categorias" api={categoriasApi} />}
             {tab === 'talles' && <SeccionSimple titulo="Talles" apiKey="talles" api={tallesApi} />}
             {tab === 'proveedores' && <SeccionProveedores />}
+            {tab === 'gruposWa' && <SeccionGruposWa />}
             {tab === 'guia' && <SeccionGuia />}
         </div>
     )
@@ -316,6 +318,167 @@ function FormProveedor({
             <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onCancelar} className="px-4 py-2 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase">Cancelar</button>
                 <button type="submit" disabled={guardando || !nombre.trim()} className="px-4 py-2 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400 disabled:opacity-40 transition-all">
+                    {guardando ? 'Guardando...' : inicial ? 'Guardar' : 'Crear'}
+                </button>
+            </div>
+        </form>
+    )
+}
+
+// ── Sección Grupos WhatsApp ───────────────────────────────────────
+
+function SeccionGruposWa() {
+    const [grupos, setGrupos] = useState<GrupoWhatsapp[]>([])
+    const [loading, setLoading] = useState(true)
+    const [mostrarForm, setMostrarForm] = useState(false)
+    const [editandoId, setEditandoId] = useState<string | null>(null)
+    const [error, setError] = useState('')
+
+    async function cargar() {
+        setLoading(true)
+        gruposWaApi.listar().then(setGrupos).finally(() => setLoading(false))
+    }
+
+    useEffect(() => { cargar() }, [])
+
+    async function toggleActivo(g: GrupoWhatsapp) {
+        try {
+            await gruposWaApi.actualizar(g.id, { activo: !g.activo })
+            await cargar()
+        } catch (e: any) { setError(e.message) }
+    }
+
+    async function eliminar(id: string, nombre: string) {
+        if (!confirm(`¿Eliminar grupo "${nombre}"?`)) return
+        setError('')
+        try {
+            await gruposWaApi.eliminar(id)
+            await cargar()
+        } catch (e: any) { setError(e.message) }
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 text-xs text-zinc-500 leading-relaxed">
+                Configurá los grupos de WhatsApp donde se publican las prendas.<br />
+                <span className="text-zinc-400">Para obtener el ID de un grupo: en n8n, usá el nodo de Evolution API <em>fetchAllGroups</em>, o buscá el valor <code className="bg-zinc-800 px-1 rounded">remoteJid</code> que llega en un mensaje del grupo.</span>
+            </div>
+
+            <div className="flex justify-end">
+                <button
+                    onClick={() => { setMostrarForm(true); setEditandoId(null) }}
+                    className="px-5 py-2.5 rounded-xl bg-orange-500 text-black font-black text-sm uppercase hover:bg-orange-400 transition-all"
+                >
+                    + Agregar grupo
+                </button>
+            </div>
+
+            {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>}
+
+            {(mostrarForm && !editandoId) && (
+                <FormGrupoWa
+                    onGuardado={() => { setMostrarForm(false); cargar() }}
+                    onCancelar={() => setMostrarForm(false)}
+                />
+            )}
+
+            {loading ? (
+                <div className="space-y-2">
+                    {[...Array(2)].map((_, i) => <div key={i} className="h-16 bg-zinc-900 rounded-xl animate-pulse" />)}
+                </div>
+            ) : grupos.length === 0 ? (
+                <p className="text-center py-10 text-zinc-500">No hay grupos configurados todavía</p>
+            ) : (
+                <div className="space-y-2">
+                    {grupos.map(g => (
+                        <div key={g.id}>
+                            {editandoId === g.id ? (
+                                <FormGrupoWa
+                                    inicial={g}
+                                    onGuardado={() => { setEditandoId(null); cargar() }}
+                                    onCancelar={() => setEditandoId(null)}
+                                />
+                            ) : (
+                                <div className="flex items-center gap-3 bg-zinc-900 border border-white/5 rounded-xl px-4 py-3">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-white text-sm font-bold">{g.nombre}</p>
+                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${g.activo ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border-white/10'}`}>
+                                                {g.activo ? 'Activo' : 'Inactivo'}
+                                            </span>
+                                        </div>
+                                        <p className="text-zinc-500 text-xs font-mono truncate">{g.groupId}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => toggleActivo(g)}
+                                        className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors ${g.activo ? 'bg-zinc-800 text-zinc-400 border-white/10 hover:border-white/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'}`}
+                                    >
+                                        {g.activo ? 'Desactivar' : 'Activar'}
+                                    </button>
+                                    <button onClick={() => { setEditandoId(g.id); setMostrarForm(false) }} className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 border border-white/10 text-xs font-bold hover:border-white/20 transition-colors">
+                                        ✏️
+                                    </button>
+                                    <button onClick={() => eliminar(g.id, g.nombre)} className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-bold hover:bg-red-500/20 transition-colors">
+                                        🗑
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+function FormGrupoWa({
+    inicial,
+    onGuardado,
+    onCancelar,
+}: {
+    inicial?: GrupoWhatsapp
+    onGuardado: () => void
+    onCancelar: () => void
+}) {
+    const [nombre, setNombre] = useState(inicial?.nombre ?? '')
+    const [groupId, setGroupId] = useState(inicial?.groupId ?? '')
+    const [guardando, setGuardando] = useState(false)
+    const [error, setError] = useState('')
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault()
+        if (!nombre.trim() || !groupId.trim()) return
+        setGuardando(true)
+        setError('')
+        try {
+            if (inicial) {
+                await gruposWaApi.actualizar(inicial.id, { nombre: nombre.trim(), groupId: groupId.trim() })
+            } else {
+                await gruposWaApi.crear({ nombre: nombre.trim(), groupId: groupId.trim() })
+            }
+            onGuardado()
+        } catch (e: any) {
+            setError(e.message)
+            setGuardando(false)
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="bg-zinc-900 border border-orange-500/20 rounded-xl p-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label className="label">Nombre del grupo</label>
+                    <input value={nombre} onChange={e => setNombre(e.target.value)} className="input" placeholder="Ej: Ropa Stylo" required autoFocus />
+                </div>
+                <div>
+                    <label className="label">ID del grupo</label>
+                    <input value={groupId} onChange={e => setGroupId(e.target.value)} className="input font-mono text-sm" placeholder="Ej: 120363409335446559@g.us" required />
+                </div>
+            </div>
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <div className="flex gap-2 justify-end">
+                <button type="button" onClick={onCancelar} className="px-4 py-2 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase">Cancelar</button>
+                <button type="submit" disabled={guardando || !nombre.trim() || !groupId.trim()} className="px-4 py-2 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400 disabled:opacity-40 transition-all">
                     {guardando ? 'Guardando...' : inicial ? 'Guardar' : 'Crear'}
                 </button>
             </div>

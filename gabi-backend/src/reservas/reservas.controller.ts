@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Param, Body } from '@nestjs/common';
 import { ReservasService } from './reservas.service';
-import { CreateReservaDto, ConfirmarReservaDto, ReservaBotDto } from './dto/create-reserva.dto';
+import { CreateReservaDto, ConfirmarReservaDto, ReservaBotDto, ConfirmarPorBotDto } from './dto/create-reserva.dto';
 import { Public } from '../auth/public.decorator';
 
 @Controller('reservas')
@@ -48,5 +48,12 @@ export class ReservasController {
     @Post('reservar-bot')
     reservarDesdeBot(@Body() dto: ReservaBotDto) {
         return this.reservasService.reservarDesdeBot(dto);
+    }
+
+    // POST /api/v1/reservas/confirmar-por-bot — cliente manda foto del comprobante al bot
+    @Public()
+    @Post('confirmar-por-bot')
+    confirmarPorBot(@Body() dto: ConfirmarPorBotDto) {
+        return this.reservasService.confirmarPorBot(dto);
     }
 }

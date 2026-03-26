@@ -32,3 +32,12 @@ export class ConfirmarReservaDto {
     @IsOptional()
     comprobanteUrl?: string; // URL de la foto del comprobante en Supabase Storage
 }
+
+export class ConfirmarPorBotDto {
+    @IsString()
+    telefonoWhatsapp: string;
+
+    @IsString()
+    @IsOptional()
+    comprobanteUrl?: string;
+}

@@ -4,6 +4,7 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { GruposWhatsappService } from '../grupos-whatsapp/grupos-whatsapp.service';
 import { CreateFardoDto } from './dto/create-fardo.dto';
 import { AbrirFardoDto } from './dto/abrir-fardo.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,7 +12,10 @@ import * as QRCode from 'qrcode';
 
 @Injectable()
 export class FardosService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly gruposService: GruposWhatsappService,
+    ) { }
 
     // ── Registrar compra de fardo ────────────────────────────────
     create(dto: CreateFardoDto) {
@@ -122,12 +126,14 @@ export class FardosService {
         const evolutionApiUrl = process.env.EVOLUTION_API_URL;
         const evolutionApiKey = process.env.EVOLUTION_API_KEY;
         const evolutionInstance = process.env.EVOLUTION_INSTANCE || 'manu';
-        const groupId = process.env.WHATSAPP_GROUP_ID;
 
-        if (!evolutionApiUrl || !evolutionApiKey || !groupId) {
-            throw new BadRequestException(
-                'Faltan variables de entorno: EVOLUTION_API_URL, EVOLUTION_API_KEY o WHATSAPP_GROUP_ID',
-            );
+        if (!evolutionApiUrl || !evolutionApiKey) {
+            throw new BadRequestException('Faltan variables de entorno: EVOLUTION_API_URL o EVOLUTION_API_KEY');
+        }
+
+        const grupos = await this.gruposService.findActivos();
+        if (grupos.length === 0) {
+            throw new BadRequestException('No hay grupos de WhatsApp activos configurados. Agregalos en Configuración → Grupos WA.');
         }
 
         const fardo = await this.findOne(id);
@@ -151,31 +157,32 @@ export class FardosService {
                 `💰 $${precio}\n` +
                 `📲 Reenviá esta foto al número de la tienda para reservar\u200B${codigo}`;
 
-            try {
-                const res = await fetch(
-                    `${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-                        body: JSON.stringify({
-                            number: groupId,
-                            mediatype: 'image',
-                            mimetype: 'image/jpeg',
-                            media: foto.url,
-                            caption,
-                            fileName: 'prenda.jpg',
-                        }),
-                    },
-                );
-                if (res.ok) {
-                    enviadas++;
-                } else {
-                    const texto = await res.text();
-                    errores.push(`${prenda.id}: ${texto}`);
+            for (const grupo of grupos) {
+                try {
+                    const res = await fetch(
+                        `${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                            body: JSON.stringify({
+                                number: grupo.groupId,
+                                mediatype: 'image',
+                                mimetype: 'image/jpeg',
+                                media: foto.url,
+                                caption,
+                                fileName: 'prenda.jpg',
+                            }),
+                        },
+                    );
+                    if (!res.ok) {
+                        const texto = await res.text();
+                        errores.push(`${prenda.id} → ${grupo.nombre}: ${texto}`);
+                    }
+                } catch (err: any) {
+                    errores.push(`${prenda.id} → ${grupo.nombre}: ${err.message}`);
                 }
-            } catch (err: any) {
-                errores.push(`${prenda.id}: ${err.message}`);
             }
+            enviadas++;
         }
 
         return { enviadas, sinFoto, errores };

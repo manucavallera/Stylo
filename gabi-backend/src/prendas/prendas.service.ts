@@ -4,11 +4,15 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { GruposWhatsappService } from '../grupos-whatsapp/grupos-whatsapp.service';
 import { UpdatePrendaDto } from './dto/update-prenda.dto';
 
 @Injectable()
 export class PrendasService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly gruposService: GruposWhatsappService,
+    ) { }
 
     // ── Listar prendas con filtros opcionales ────────────────────
     findAll(filters?: {
@@ -91,10 +95,14 @@ export class PrendasService {
         const evolutionApiUrl = process.env.EVOLUTION_API_URL;
         const evolutionApiKey = process.env.EVOLUTION_API_KEY;
         const evolutionInstance = process.env.EVOLUTION_INSTANCE || 'manu';
-        const groupId = process.env.WHATSAPP_GROUP_ID;
 
-        if (!evolutionApiUrl || !evolutionApiKey || !groupId) {
-            throw new BadRequestException('Faltan variables de entorno de Evolution API o WHATSAPP_GROUP_ID');
+        if (!evolutionApiUrl || !evolutionApiKey) {
+            throw new BadRequestException('Faltan variables de entorno: EVOLUTION_API_URL o EVOLUTION_API_KEY');
+        }
+
+        const grupos = await this.gruposService.findActivos();
+        if (grupos.length === 0) {
+            throw new BadRequestException('No hay grupos de WhatsApp activos configurados. Agregalos en Configuración → Grupos WA.');
         }
 
         const prenda = await this.prisma.prenda.findUnique({
@@ -114,13 +122,15 @@ export class PrendasService {
             `💰 $${precio}\n` +
             `📲 Reenviá esta foto al número de la tienda para reservar\u200B${codigo}`;
 
-        const res = await fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-            body: JSON.stringify({ number: groupId, mediatype: 'image', mimetype: 'image/jpeg', media: prenda.fotos[0].url, caption, fileName: 'prenda.jpg' }),
-        });
+        for (const grupo of grupos) {
+            const res = await fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                body: JSON.stringify({ number: grupo.groupId, mediatype: 'image', mimetype: 'image/jpeg', media: prenda.fotos[0].url, caption, fileName: 'prenda.jpg' }),
+            });
+            if (!res.ok) throw new BadRequestException(`Error al enviar a ${grupo.nombre}: ${await res.text()}`);
+        }
 
-        if (!res.ok) throw new BadRequestException(`Error al enviar: ${await res.text()}`);
         return { ok: true };
     }
 

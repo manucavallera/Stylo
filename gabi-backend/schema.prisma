@@ -289,6 +289,21 @@ model Venta {
 }
 
 // ============================================================
+// GRUPO WHATSAPP
+// ============================================================
+
+model GrupoWhatsapp {
+  id        String   @id @default(uuid())
+  nombre    String
+  groupId   String   @unique @map("group_id")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("grupos_whatsapp")
+}
+
+// ============================================================
 // COMPROBANTE
 // ============================================================
 
