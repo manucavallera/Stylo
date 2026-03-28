@@ -67,10 +67,10 @@ export class CajaService {
             throw new BadRequestException('Esta caja ya está cerrada');
         }
 
-        // montoEsperado = apertura + ventas efectivo - gastos del día
-        const [ventasEfectivo, gastosDelDia] = await Promise.all([
+        // montoEsperado = apertura + todas las ventas del día - gastos
+        const [todasLasVentas, gastosDelDia] = await Promise.all([
             this.prisma.venta.aggregate({
-                where: { cajaId: id, metodoPago: 'EFECTIVO' },
+                where: { cajaId: id },
                 _sum: { precioFinal: true },
             }),
             this.prisma.gastoCaja.aggregate({
@@ -81,7 +81,7 @@ export class CajaService {
 
         const montoEsperado =
             Number(caja.montoApertura) +
-            Number(ventasEfectivo._sum.precioFinal ?? 0) -
+            Number(todasLasVentas._sum.precioFinal ?? 0) -
             Number(gastosDelDia._sum.monto ?? 0);
 
         const diferencia = dto.montoReal - montoEsperado;

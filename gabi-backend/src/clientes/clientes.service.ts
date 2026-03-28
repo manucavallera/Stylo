@@ -33,11 +33,14 @@ export class ClientesService {
     }
 
     async remove(id: string) {
-        const cliente = await this.findOne(id);
-        if (cliente.ventas.length > 0) {
+        const [ventasCount, reservasCount] = await Promise.all([
+            this.prisma.venta.count({ where: { clienteId: id } }),
+            this.prisma.reserva.count({ where: { clienteId: id } }),
+        ]);
+        if (ventasCount > 0) {
             throw new BadRequestException('No se puede eliminar un cliente que tiene ventas registradas');
         }
-        if (cliente.reservas.length > 0) {
+        if (reservasCount > 0) {
             throw new BadRequestException('No se puede eliminar un cliente que tiene reservas registradas');
         }
         return this.prisma.cliente.delete({ where: { id } });
