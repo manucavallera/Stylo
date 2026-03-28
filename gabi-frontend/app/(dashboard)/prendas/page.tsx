@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { prendasApi, type Prenda } from '@/lib/api'
+import { prendasApi, fardosApi, type Prenda } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 
 const ESTADOS = ['', 'DISPONIBLE', 'RESERVADO', 'VENDIDO', 'FALLA']

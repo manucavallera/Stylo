@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fardosApi, proveedoresApi, categoriasApi, tallesApi, prendasApi, type Fardo, type Proveedor, type CategoriaOTalle } from '@/lib/api'
+import { fardosApi, proveedoresApi, categoriasApi, tallesApi, type Fardo, type Proveedor, type CategoriaOTalle } from '@/lib/api'
 
 const ESTADO_COLORS: Record<string, string> = {
     PENDIENTE_APERTURA: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -15,7 +15,6 @@ export default function FardosPage() {
     const [modalNuevo, setModalNuevo] = useState(false)
     const [fardoAbriendo, setFardoAbriendo] = useState<Fardo | null>(null)
     const [fardoAgregando, setFardoAgregando] = useState<Fardo | null>(null)
-    const [fardoPrecio, setFardoPrecio] = useState<Fardo | null>(null)
     const [fardoPublicando, setFardoPublicando] = useState<Fardo | null>(null)
 
     async function cargar() {
@@ -54,7 +53,6 @@ export default function FardosPage() {
                             fardo={f}
                             onAbrir={() => setFardoAbriendo(f)}
                             onAgregarPrendas={() => setFardoAgregando(f)}
-                            onCambiarPrecio={() => setFardoPrecio(f)}
                             onPublicarGrupo={() => setFardoPublicando(f)}
                         />
                     ))}
@@ -85,14 +83,6 @@ export default function FardosPage() {
                 />
             )}
 
-            {fardoPrecio && (
-                <ModalCambiarPrecio
-                    fardo={fardoPrecio}
-                    onClose={() => setFardoPrecio(null)}
-                    onGuardado={() => { setFardoPrecio(null); cargar() }}
-                />
-            )}
-
             {fardoPublicando && (
                 <ModalPublicarGrupo
                     fardo={fardoPublicando}
@@ -103,7 +93,7 @@ export default function FardosPage() {
     )
 }
 
-function FardoRow({ fardo, onAbrir, onAgregarPrendas, onCambiarPrecio, onPublicarGrupo }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onCambiarPrecio: () => void; onPublicarGrupo: () => void }) {
+function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onPublicarGrupo: () => void }) {
     return (
         <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
@@ -132,9 +122,6 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onCambiarPrecio, onPublica
                         </a>
                         <button onClick={onAgregarPrendas} className="px-4 py-2 border border-emerald-500/30 text-emerald-400 font-black text-xs uppercase rounded-xl hover:bg-emerald-500/10 transition-colors whitespace-nowrap">
                             + Agregar
-                        </button>
-                        <button onClick={onCambiarPrecio} className="px-4 py-2 border border-orange-500/30 text-orange-400 font-black text-xs uppercase rounded-xl hover:bg-orange-500/10 transition-colors whitespace-nowrap">
-                            $ Precio
                         </button>
                         <button onClick={onPublicarGrupo} className="px-4 py-2 border border-sky-500/30 text-sky-400 font-black text-xs uppercase rounded-xl hover:bg-sky-500/10 transition-colors whitespace-nowrap">
                             Publicar grupo
@@ -374,51 +361,6 @@ function ModalAbrirFardo({ fardo, titulo, onClose, onAbierto }: { fardo: Fardo; 
                     <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase">Cancelar</button>
                     <button type="submit" disabled={guardando || totalPrendas === 0} className="flex-1 py-2.5 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400 disabled:opacity-50">
                         {guardando ? 'Abriendo...' : `Abrir (${totalPrendas} prendas)`}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-    )
-}
-
-function ModalCambiarPrecio({ fardo, onClose, onGuardado }: { fardo: Fardo; onClose: () => void; onGuardado: () => void }) {
-    const [precio, setPrecio] = useState('')
-    const [guardando, setGuardando] = useState(false)
-    const [error, setError] = useState('')
-
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
-        setGuardando(true)
-        setError('')
-        try {
-            // Actualizar todas las prendas del fardo
-            const fardoDetalle = await fardosApi.uno(fardo.id) as any
-            await Promise.all(
-                fardoDetalle.prendas
-                    .filter((p: any) => p.estado === 'DISPONIBLE')
-                    .map((p: any) => prendasApi.actualizar(p.id, { precioVenta: Number(precio) }))
-            )
-            onGuardado()
-        } catch (e: any) {
-            setError(e.message)
-        } finally {
-            setGuardando(false)
-        }
-    }
-
-    return (
-        <Modal title={`Cambiar precio — ${fardo.proveedor?.nombre}`} onClose={onClose}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-zinc-400 text-sm">Se actualizará el precio de todas las prendas <span className="text-white font-bold">DISPONIBLES</span> de este fardo.</p>
-                <div>
-                    <label className="label">Nuevo precio de venta</label>
-                    <input className="input text-xl font-bold" type="number" min="0" step="0.01" placeholder="$0.00" value={precio} onChange={e => setPrecio(e.target.value)} required autoFocus />
-                </div>
-                {error && <p className="text-red-400 text-sm">{error}</p>}
-                <div className="flex gap-3">
-                    <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase">Cancelar</button>
-                    <button type="submit" disabled={guardando} className="flex-1 py-2.5 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400 disabled:opacity-50">
-                        {guardando ? 'Actualizando...' : 'Guardar precio'}
                     </button>
                 </div>
             </form>
