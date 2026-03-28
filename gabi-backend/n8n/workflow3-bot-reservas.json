@@ -17,13 +17,69 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parsear webhook de Evolution API\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\nconst nombreCliente = data.pushName || null;\n\n// Decodificar código invisible (\\u200B=0, \\u200C=1, 4 bits por hex char)\nfunction decodeInvisible(text) {\n  const zwChars = [...text].filter(c => c === '\\u200B' || c === '\\u200C');\n  if (zwChars.length < 32) return null;\n  const bits = zwChars.slice(0, 32).map(c => c === '\\u200B' ? '0' : '1').join('');\n  let hex = '';\n  for (let i = 0; i < 32; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);\n  return hex;\n}\n\n// Caso 1: tiene código invisible → reservar\nconst prendaId = decodeInvisible(caption);\nif (prendaId) {\n  return [{ json: { tipo: 'reservar', prendaId, telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 2: es una imagen sin código → comprobante de pago\nif (message.imageMessage) {\n  const mediaUrl = message.imageMessage?.url || null;\n  return [{ json: { tipo: 'comprobante', telefono, remoteJid, mediaUrl } }];\n}\n\n// Cualquier otro mensaje: ignorar\nreturn [];"
+        "jsCode": "// Parsear webhook de Evolution API\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\nconst nombreCliente = data.pushName || null;\n\n// Decodificar código invisible (\\u200B=0, \\u200C=1, 4 bits por hex char)\nfunction decodeInvisible(text) {\n  const zwChars = [...text].filter(c => c === '\\u200B' || c === '\\u200C');\n  if (zwChars.length < 32) return null;\n  const bits = zwChars.slice(0, 32).map(c => c === '\\u200B' ? '0' : '1').join('');\n  let hex = '';\n  for (let i = 0; i < 32; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);\n  return hex;\n}\n\nconst staticData = $getWorkflowStaticData('global');\n\n// Caso 1: imagen con código invisible → preguntar si quiere reservar\nconst prendaId = decodeInvisible(caption);\nif (prendaId) {\n  staticData[`pending_${telefono}`] = { prendaId, ts: Date.now() };\n  return [{ json: { tipo: 'pre_reservar', telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 2: texto SI → confirmar reserva pendiente\nconst textoNorm = caption.trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nif (textoNorm === 'SI') {\n  const pending = staticData[`pending_${telefono}`];\n  if (pending && (Date.now() - pending.ts) < 10 * 60 * 1000) {\n    delete staticData[`pending_${telefono}`];\n    return [{ json: { tipo: 'reservar', prendaId: pending.prendaId, telefono, remoteJid, nombreCliente } }];\n  }\n  return [];\n}\n\n// Caso 3: imagen sin código → comprobante de pago\nif (message.imageMessage) {\n  const mediaUrl = message.imageMessage?.url || null;\n  return [{ json: { tipo: 'comprobante', telefono, remoteJid, mediaUrl } }];\n}\n\n// Cualquier otro mensaje: ignorar\nreturn [];"
       },
       "id": "c1b2c3d4-0002-0002-0002-000000000001",
       "name": "Parsear Mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-pre",
+              "leftValue": "={{ $json.tipo }}",
+              "rightValue": "pre_reservar",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0015-0015-0015-000000000001",
+      "name": "¿Pre-Reservar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const remoteJid = $json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: '👗 ¡Buena elección! ¿Querés reservar esta prenda?\\n\\nRespondé *SI* para confirmar (tenés 10 minutos).' } }];"
+      },
+      "id": "c1b2c3d4-0013-0013-0013-000000000001",
+      "name": "Formatear Pregunta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://manu-evolution-api:8080/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.remoteJid }}" },
+            { "name": "text", "value": "={{ $json.mensaje }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1b2c3d4-0014-0014-0014-000000000001",
+      "name": "WhatsApp - Pregunta Reserva",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 220],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -45,7 +101,7 @@
       "name": "¿Reservar o Comprobante?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [680, 400]
+      "position": [900, 560]
     },
     {
       "parameters": {
@@ -65,7 +121,7 @@
       "name": "Crear Reserva",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 280],
+      "position": [1120, 460],
       "continueOnFail": true
     },
     {
@@ -88,7 +144,7 @@
       "name": "¿Reserva OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1120, 280]
+      "position": [1340, 460]
     },
     {
       "parameters": {
@@ -98,7 +154,7 @@
       "name": "Formatear Confirmación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 180]
+      "position": [1560, 360]
     },
     {
       "parameters": {
@@ -125,7 +181,7 @@
       "name": "WhatsApp - Confirmación Reserva",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 180],
+      "position": [1780, 360],
       "continueOnFail": true
     },
     {
@@ -136,7 +192,7 @@
       "name": "Formatear Error Reserva",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 380]
+      "position": [1560, 560]
     },
     {
       "parameters": {
@@ -159,7 +215,7 @@
       "name": "WhatsApp - No Disponible",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 380]
+      "position": [1780, 560]
     },
     {
       "parameters": {
@@ -178,7 +234,7 @@
       "name": "Guardar Comprobante",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 540],
+      "position": [1120, 680],
       "continueOnFail": true
     },
     {
@@ -189,7 +245,7 @@
       "name": "Formatear Acuse Comprobante",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 540]
+      "position": [1340, 680]
     },
     {
       "parameters": {
@@ -212,7 +268,7 @@
       "name": "WhatsApp - Acuse Comprobante",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 540]
+      "position": [1560, 680]
     }
   ],
   "connections": {
@@ -220,7 +276,16 @@
       "main": [[{ "node": "Parsear Mensaje", "type": "main", "index": 0 }]]
     },
     "Parsear Mensaje": {
-      "main": [[{ "node": "¿Reservar o Comprobante?", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "¿Pre-Reservar?", "type": "main", "index": 0 }]]
+    },
+    "¿Pre-Reservar?": {
+      "main": [
+        [{ "node": "Formatear Pregunta", "type": "main", "index": 0 }],
+        [{ "node": "¿Reservar o Comprobante?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Formatear Pregunta": {
+      "main": [[{ "node": "WhatsApp - Pregunta Reserva", "type": "main", "index": 0 }]]
     },
     "¿Reservar o Comprobante?": {
       "main": [
@@ -255,6 +320,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-03-25T00:00:00.000Z",
-  "versionId": "gabi-bot-reservas-v3"
+  "updatedAt": "2026-03-28T00:00:00.000Z",
+  "versionId": "gabi-bot-reservas-v4"
 }
