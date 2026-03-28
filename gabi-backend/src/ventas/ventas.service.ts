@@ -47,8 +47,8 @@ export class VentasService {
                 data: { estado: 'VENDIDO' },
             });
 
-            // Si hay caja abierta, actualizar monto esperado (solo efectivo suma a la caja)
-            if (dto.cajaId && dto.metodoPago === 'EFECTIVO') {
+            // Si hay caja abierta, sumar la venta al monto esperado
+            if (dto.cajaId) {
                 await tx.cajaDiaria.update({
                     where: { id: dto.cajaId },
                     data: {

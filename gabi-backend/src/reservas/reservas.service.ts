@@ -140,13 +140,29 @@ export class ReservasService {
                 },
             });
 
+            if (cajaAbierta) {
+                await tx.cajaDiaria.update({
+                    where: { id: cajaAbierta.id },
+                    data: { montoEsperado: { increment: reserva.prenda.precioVenta } },
+                });
+            }
+
             return updated;
         });
 
-        this.notificarN8n('reserva-confirmada', {
-            telefonoWhatsapp: reservaConfirmada.cliente.telefonoWhatsapp,
-            fotoUrl: reservaConfirmada.prenda.fotos[0]?.url ?? null,
-        });
+        // Notificar al cliente por WhatsApp
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE;
+        if (evolutionApiUrl && evolutionApiKey && evolutionInstance && reservaConfirmada.cliente?.telefonoWhatsapp) {
+            const remoteJid = `${reservaConfirmada.cliente.telefonoWhatsapp}@s.whatsapp.net`;
+            const mensaje = `✅ ¡Tu compra fue confirmada!\n\nGabi revisó tu comprobante y todo está en orden. ¡Gracias por tu compra! 🛍️`;
+            fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                body: JSON.stringify({ number: remoteJid, text: mensaje }),
+            }).catch(() => null);
+        }
 
         return reservaConfirmada;
     }
