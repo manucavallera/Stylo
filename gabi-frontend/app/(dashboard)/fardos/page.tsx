@@ -120,6 +120,9 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo }: { fardo
                         <a href={`/prendas?fardoId=${fardo.id}`} className="px-4 py-2 border border-white/10 text-zinc-400 font-black text-xs uppercase rounded-xl hover:border-white/20 transition-colors whitespace-nowrap">
                             Ver ({fardo.totalPrendas})
                         </a>
+                        <a href={`/fardos/${fardo.id}/etiquetas`} className="px-4 py-2 border border-violet-500/30 text-violet-400 font-black text-xs uppercase rounded-xl hover:bg-violet-500/10 transition-colors whitespace-nowrap">
+                            🏷 Etiquetas
+                        </a>
                         <button onClick={onAgregarPrendas} className="px-4 py-2 border border-emerald-500/30 text-emerald-400 font-black text-xs uppercase rounded-xl hover:bg-emerald-500/10 transition-colors whitespace-nowrap">
                             + Agregar
                         </button>
