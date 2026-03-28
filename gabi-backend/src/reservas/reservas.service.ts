@@ -94,7 +94,10 @@ export class ReservasService {
 
     // ── Confirmar reserva (cliente pagó) ─────────────────────────
     async confirmar(id: string, dto: ConfirmarReservaDto) {
-        const reserva = await this.prisma.reserva.findUnique({ where: { id } });
+        const reserva = await this.prisma.reserva.findUnique({
+            where: { id },
+            include: { prenda: true },
+        });
         if (!reserva) throw new NotFoundException('Reserva no encontrada');
         if (reserva.estado !== 'ACTIVA') {
             throw new BadRequestException(
@@ -102,16 +105,42 @@ export class ReservasService {
             );
         }
 
-        const reservaConfirmada = await this.prisma.reserva.update({
-            where: { id },
-            data: {
-                estado: 'CONFIRMADA',
-                comprobanteUrl: dto.comprobanteUrl,
-            },
-            include: {
-                prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 } } },
-                cliente: true,
-            },
+        // Buscar caja abierta hoy (opcional — si no hay, la venta queda sin caja)
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const cajaAbierta = await this.prisma.cajaDiaria.findFirst({
+            where: { fecha: hoy, estado: 'ABIERTA' },
+        });
+
+        const reservaConfirmada = await this.prisma.$transaction(async (tx) => {
+            const updated = await tx.reserva.update({
+                where: { id },
+                data: { estado: 'CONFIRMADA', comprobanteUrl: dto.comprobanteUrl },
+                include: {
+                    prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 } } },
+                    cliente: true,
+                },
+            });
+
+            await tx.prenda.update({
+                where: { id: reserva.prendaId },
+                data: { estado: 'VENDIDO' },
+            });
+
+            await tx.venta.create({
+                data: {
+                    prendaId: reserva.prendaId,
+                    clienteId: reserva.clienteId ?? undefined,
+                    reservaId: id,
+                    cajaId: cajaAbierta?.id ?? null,
+                    precioFinal: reserva.prenda.precioVenta,
+                    costoHistoricoArs: reserva.prenda.costoUnitario,
+                    metodoPago: 'TRANSFERENCIA',
+                    canalVenta: 'ONLINE',
+                },
+            });
+
+            return updated;
         });
 
         this.notificarN8n('reserva-confirmada', {
