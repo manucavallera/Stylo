@@ -117,10 +117,11 @@ export class PrendasService {
         const precio = Number(prenda.precioVenta).toLocaleString('es-AR');
         const codigo = prenda.id.substring(0, 8);
         const desc = [categoria, talle].filter(Boolean).join(' — Talle ');
+        const codigoInvisible = codigo.split('').map(c => ({ '0':'\u200B\u200B\u200B\u200B','1':'\u200B\u200B\u200B\u200C','2':'\u200B\u200B\u200C\u200B','3':'\u200B\u200B\u200C\u200C','4':'\u200B\u200C\u200B\u200B','5':'\u200B\u200C\u200B\u200C','6':'\u200B\u200C\u200C\u200B','7':'\u200B\u200C\u200C\u200C','8':'\u200C\u200B\u200B\u200B','9':'\u200C\u200B\u200B\u200C','a':'\u200C\u200B\u200C\u200B','b':'\u200C\u200B\u200C\u200C','c':'\u200C\u200C\u200B\u200B','d':'\u200C\u200C\u200B\u200C','e':'\u200C\u200C\u200C\u200B','f':'\u200C\u200C\u200C\u200C' }[c] || '')).join('');
         const caption =
             `${desc || 'Prenda'}\n` +
             `💰 $${precio}\n` +
-            `📲 Reenviá esta foto al número de la tienda para reservar\u200B${codigo}`;
+            `📲 Reenviá esta foto al número de la tienda para reservar${codigoInvisible}`;
 
         for (const grupo of grupos) {
             const res = await fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
