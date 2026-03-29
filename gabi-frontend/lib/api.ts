@@ -67,7 +67,7 @@ export const fardosApi = {
     uno: (id: string) => api.get<Fardo>(`/fardos/${id}`),
     crear: (data: NuevoFardo) => api.post<Fardo>('/fardos', data),
     abrir: (id: string, data: AbrirFardo) => api.post(`/fardos/${id}/abrir`, data),
-    publicarAlGrupo: (id: string) => api.post<{ enviadas: number; sinFoto: number; errores: string[] }>(`/fardos/${id}/publicar-grupo`, {}),
+    publicarAlGrupo: (id: string, body?: { sinFoto?: boolean }) => api.post<{ enviadas: number; sinFoto: number; errores: string[] }>(`/fardos/${id}/publicar-grupo`, body ?? {}),
     publicarPrendaAlGrupo: (id: string) => api.post(`/prendas/${id}/publicar-grupo`, {}),
     roi: (id: string) => api.get<RoiFardo>(`/fardos/${id}/roi`),
 }
@@ -133,7 +133,7 @@ export interface ResumenHoy {
     gananciaEstimada: number
     porMetodoPago: { metodoPago: string; _sum: { precioFinal: number }; _count: number }[]
 }
-export interface Prenda { id: string; qrCode: string; estado: string; precioVenta: number; precioPromocional?: number; categoria: { nombre: string }; talle: { nombre: string }; fotos: { url: string }[]; fardo?: { id: string; fechaCompra: string; proveedor?: { nombre: string } } }
+export interface Prenda { id: string; qrCode: string; estado: string; precioVenta: number; precioPromocional?: number; nota?: string; categoria: { nombre: string }; talle: { nombre: string }; fotos: { url: string }[]; fardo?: { id: string; fechaCompra: string; proveedor?: { nombre: string } } }
 export interface Fardo { id: string; costoTotal: number; moneda: string; totalPrendas: number; estado: string; fechaCompra: string; proveedor: { nombre: string } }
 export interface Venta { id: string; precioFinal: number; metodoPago: string; canalVenta: string; fechaVenta: string; prenda: Prenda }
 export interface Reserva { id: string; estado: string; fechaExpiracion: string; prenda: Prenda; cliente: { nombre: string; telefonoWhatsapp?: string } }

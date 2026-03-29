@@ -122,7 +122,7 @@ export class FardosService {
     }
 
     // ── Publicar prendas al grupo de WhatsApp ───────────────────
-    async publicarAlGrupo(id: string) {
+    async publicarAlGrupo(id: string, includeSinFoto = false) {
         const evolutionApiUrl = process.env.EVOLUTION_API_URL;
         const evolutionApiKey = process.env.EVOLUTION_API_KEY;
         const evolutionInstance = process.env.EVOLUTION_INSTANCE || 'manu';
@@ -140,7 +140,8 @@ export class FardosService {
         const prendas: any[] = fardo.prendas;
 
         const conFoto = prendas.filter(p => p.estado === 'DISPONIBLE' && p.fotos?.length > 0);
-        const sinFoto = prendas.filter(p => p.estado === 'DISPONIBLE' && !p.fotos?.length).length;
+        const sinFotoList = prendas.filter(p => p.estado === 'DISPONIBLE' && !p.fotos?.length);
+        const sinFoto = sinFotoList.length;
 
         let enviadas = 0;
         const errores: string[] = [];
@@ -153,8 +154,10 @@ export class FardosService {
             const codigo = prenda.id.substring(0, 8);
             const desc = [categoria, talle].filter(Boolean).join(' — Talle ');
             const codigoInvisible = codigo.split('').map(c => ({ '0':'\u200B\u200B\u200B\u200B','1':'\u200B\u200B\u200B\u200C','2':'\u200B\u200B\u200C\u200B','3':'\u200B\u200B\u200C\u200C','4':'\u200B\u200C\u200B\u200B','5':'\u200B\u200C\u200B\u200C','6':'\u200B\u200C\u200C\u200B','7':'\u200B\u200C\u200C\u200C','8':'\u200C\u200B\u200B\u200B','9':'\u200C\u200B\u200B\u200C','a':'\u200C\u200B\u200C\u200B','b':'\u200C\u200B\u200C\u200C','c':'\u200C\u200C\u200B\u200B','d':'\u200C\u200C\u200B\u200C','e':'\u200C\u200C\u200C\u200B','f':'\u200C\u200C\u200C\u200C' }[c] || '')).join('');
+            const notaLinea = prenda.nota ? `📝 ${prenda.nota}\n` : '';
             const caption =
                 `${desc || 'Prenda'}\n` +
+                `${notaLinea}` +
                 `💰 $${precio}\n` +
                 `📲 Reenviá esta foto al número de la tienda para reservar${codigoInvisible}`;
 
@@ -186,7 +189,43 @@ export class FardosService {
             enviadas++;
         }
 
-        return { enviadas, sinFoto, errores };
+        // Prendas sin foto: enviar solo texto si includeSinFoto=true
+        if (includeSinFoto && sinFotoList.length > 0) {
+            for (const prenda of sinFotoList) {
+                const categoria = prenda.categoria?.nombre || '';
+                const talle = prenda.talle?.nombre || '';
+                const precio = Number(prenda.precioVenta).toLocaleString('es-AR');
+                const notaLinea = prenda.nota ? `📝 ${prenda.nota}\n` : '';
+                const desc = [categoria, talle].filter(Boolean).join(' — Talle ');
+                const texto =
+                    `${desc || 'Prenda'}\n` +
+                    `${notaLinea}` +
+                    `💰 $${precio}\n` +
+                    `📲 Escribinos para reservar`;
+
+                for (const grupo of grupos) {
+                    try {
+                        const res = await fetch(
+                            `${evolutionApiUrl}/message/sendText/${evolutionInstance}`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                                body: JSON.stringify({ number: grupo.groupId, text: texto }),
+                            },
+                        );
+                        if (!res.ok) {
+                            const texto = await res.text();
+                            errores.push(`${prenda.id} (sin foto) → ${grupo.nombre}: ${texto}`);
+                        }
+                    } catch (err: any) {
+                        errores.push(`${prenda.id} (sin foto) → ${grupo.nombre}: ${err.message}`);
+                    }
+                }
+                enviadas++;
+            }
+        }
+
+        return { enviadas, sinFoto: includeSinFoto ? 0 : sinFoto, errores };
     }
 
     // ── ROI del fardo (Analytics básico) ────────────────────────

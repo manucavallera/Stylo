@@ -1,0 +1,111 @@
+{
+  "name": "Gabi - Resumen Diario",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ],
+          "cronExpression": "0 21 * * *"
+        }
+      },
+      "id": "d4e5f6a7-0001-0001-0001-000000000004",
+      "name": "Cron 21hs diario",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://manu-stylobackend.gygo4l.easypanel.host/ventas/resumen-diario",
+        "options": {}
+      },
+      "id": "d4e5f6a7-0002-0002-0002-000000000004",
+      "name": "GET Resumen Diario",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst total = Number(data.totalVendido || 0);\nconst cantidad = data.cantidadVentas || 0;\nconst reservas = data.reservasActivas || 0;\nconst sinFoto = data.prendasSinFoto || 0;\n\nconst porMetodo = data.porMetodo || {};\nconst metodos = Object.entries(porMetodo)\n  .map(([metodo, monto]) => `  - ${metodo}: $${Number(monto).toLocaleString('es-AR')}`)\n  .join('\\n');\n\nconst parteVentas = cantidad > 0\n  ? `💰 *Ventas del día: ${cantidad}*\\nTotal: $${total.toLocaleString('es-AR')}\\n${metodos ? metodos + '\\n' : ''}`\n  : `💰 *Sin ventas hoy*\\n`;\n\nconst parteReservas = reservas > 0\n  ? `📦 Reservas activas: *${reservas}*\\n`\n  : '';\n\nconst parteSinFoto = sinFoto > 0\n  ? `📷 Prendas sin foto: *${sinFoto}* — acordate de sacarles foto\\n`\n  : '';\n\nconst mensaje =\n  `🌙 *Resumen del día — ${data.fecha || new Date().toLocaleDateString('es-AR')}*\\n\\n` +\n  parteVentas + '\\n' +\n  parteReservas +\n  parteSinFoto +\n  `\\n_Sistema Americano Stylo_ 🧥`;\n\nreturn [{ json: { mensaje } }];"
+      },
+      "id": "d4e5f6a7-0003-0003-0003-000000000004",
+      "name": "Formatear mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://manu-evolution-api.gygo4l.easypanel.host/message/sendText/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "429683C4C977415CAAFCCE10F7D57E11"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ number: '549XXXXXXXXXX', text: $json.mensaje }) }}",
+        "options": {}
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000004",
+      "name": "WA - Resumen a Gabi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 400]
+    }
+  ],
+  "connections": {
+    "Cron 21hs diario": {
+      "main": [
+        [
+          {
+            "node": "GET Resumen Diario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Resumen Diario": {
+      "main": [
+        [
+          {
+            "node": "Formatear mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear mensaje": {
+      "main": [
+        [
+          {
+            "node": "WA - Resumen a Gabi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

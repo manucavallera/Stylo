@@ -151,6 +151,7 @@ model Prenda {
   estado             EstadoPrenda @default(DISPONIBLE)
   tieneFalla         Boolean      @default(false) @map("tiene_falla")
   descripcionFalla   String?      @map("descripcion_falla")
+  nota               String?
   qrCode             String       @unique @map("qr_code")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")

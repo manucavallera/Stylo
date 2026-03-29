@@ -32,4 +32,8 @@ export class UpdatePrendaDto {
     @IsString()
     @IsOptional()
     descripcionFalla?: string;
+
+    @IsString()
+    @IsOptional()
+    nota?: string;
 }

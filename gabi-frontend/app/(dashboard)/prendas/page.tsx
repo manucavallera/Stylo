@@ -207,6 +207,9 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                         <span className="text-zinc-600 text-xs line-through">${Number(prenda.precioVenta).toLocaleString('es-AR')}</span>
                     )}
                 </div>
+                {prenda.nota && (
+                    <p className="text-zinc-500 text-xs mt-0.5 truncate italic">{prenda.nota}</p>
+                )}
                 {prenda.fardo && (
                     <p className="text-zinc-600 text-xs mt-0.5 truncate">
                         {prenda.fardo.proveedor?.nombre ?? 'Fardo'}
@@ -227,6 +230,7 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
         precioVenta: String(prenda.precioVenta),
         precioPromocional: String(prenda.precioPromocional ?? ''),
         estado: prenda.estado,
+        nota: prenda.nota ?? '',
     })
     const [fotos, setFotos] = useState<{ id: string; url: string; orden: number }[]>(
         (prenda.fotos ?? []).map((f, i) => ({ id: (f as any).id ?? String(i), url: f.url, orden: i }))
@@ -245,6 +249,7 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
             const data: Record<string, any> = {
                 precioVenta: Number(form.precioVenta),
                 estado: form.estado,
+                nota: form.nota || null,
             }
             if (form.precioPromocional) data.precioPromocional = Number(form.precioPromocional)
             else data.precioPromocional = null
@@ -386,6 +391,17 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
                             {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
                             <option value="RETIRADO">RETIRADO</option>
                         </select>
+                    </div>
+                    <div>
+                        <label className="label">Nota <span className="text-zinc-600 normal-case font-normal">opcional — se muestra en el mensaje de WA</span></label>
+                        <input
+                            className="input"
+                            type="text"
+                            maxLength={80}
+                            placeholder="Ej: Nike, talle real, como nueva"
+                            value={form.nota}
+                            onChange={e => setForm(p => ({ ...p, nota: e.target.value }))}
+                        />
                     </div>
                     {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>}
                     <div className="flex gap-3 pt-1">

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { fardosApi, proveedoresApi, categoriasApi, tallesApi, type Fardo, type Proveedor, type CategoriaOTalle } from '@/lib/api'
+import { useEffect, useState, useRef } from 'react'
+import { fardosApi, prendasApi, proveedoresApi, categoriasApi, tallesApi, type Fardo, type Prenda, type Proveedor, type CategoriaOTalle } from '@/lib/api'
+import { createClient } from '@/lib/supabase/client'
 
 const ESTADO_COLORS: Record<string, string> = {
     PENDIENTE_APERTURA: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -16,6 +17,7 @@ export default function FardosPage() {
     const [fardoAbriendo, setFardoAbriendo] = useState<Fardo | null>(null)
     const [fardoAgregando, setFardoAgregando] = useState<Fardo | null>(null)
     const [fardoPublicando, setFardoPublicando] = useState<Fardo | null>(null)
+    const [fardoSesionFotos, setFardoSesionFotos] = useState<Fardo | null>(null)
 
     async function cargar() {
         setLoading(true)
@@ -54,6 +56,7 @@ export default function FardosPage() {
                             onAbrir={() => setFardoAbriendo(f)}
                             onAgregarPrendas={() => setFardoAgregando(f)}
                             onPublicarGrupo={() => setFardoPublicando(f)}
+                            onSesionFotos={() => setFardoSesionFotos(f)}
                         />
                     ))}
                 </div>
@@ -89,11 +92,18 @@ export default function FardosPage() {
                     onClose={() => setFardoPublicando(null)}
                 />
             )}
+
+            {fardoSesionFotos && (
+                <ModalSesionFotos
+                    fardo={fardoSesionFotos}
+                    onClose={() => setFardoSesionFotos(null)}
+                />
+            )}
         </div>
     )
 }
 
-function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onPublicarGrupo: () => void }) {
+function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionFotos }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onPublicarGrupo: () => void; onSesionFotos: () => void }) {
     return (
         <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
@@ -123,6 +133,9 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo }: { fardo
                         <a href={`/fardos/${fardo.id}/etiquetas`} className="px-4 py-2 border border-violet-500/30 text-violet-400 font-black text-xs uppercase rounded-xl hover:bg-violet-500/10 transition-colors whitespace-nowrap">
                             🏷 Etiquetas
                         </a>
+                        <button onClick={onSesionFotos} className="px-4 py-2 border border-amber-500/30 text-amber-400 font-black text-xs uppercase rounded-xl hover:bg-amber-500/10 transition-colors whitespace-nowrap">
+                            📷 Fotos
+                        </button>
                         <button onClick={onAgregarPrendas} className="px-4 py-2 border border-emerald-500/30 text-emerald-400 font-black text-xs uppercase rounded-xl hover:bg-emerald-500/10 transition-colors whitespace-nowrap">
                             + Agregar
                         </button>
@@ -375,12 +388,21 @@ function ModalPublicarGrupo({ fardo, onClose }: { fardo: Fardo; onClose: () => v
     const [estado, setEstado] = useState<'confirm' | 'loading' | 'done'>('confirm')
     const [resultado, setResultado] = useState<{ enviadas: number; sinFoto: number; errores: string[] } | null>(null)
     const [error, setError] = useState('')
+    const [prendas, setPrendas] = useState<Prenda[] | null>(null)
+    const [incluirSinFoto, setIncluirSinFoto] = useState(false)
+
+    useEffect(() => {
+        prendasApi.listar({ fardoId: fardo.id, estado: 'DISPONIBLE' }).then(setPrendas)
+    }, [fardo.id])
+
+    const conFoto = prendas?.filter(p => p.fotos?.length > 0) ?? []
+    const sinFotoCount = (prendas?.length ?? 0) - conFoto.length
 
     async function publicar() {
         setEstado('loading')
         setError('')
         try {
-            const res = await fardosApi.publicarAlGrupo(fardo.id)
+            const res = await fardosApi.publicarAlGrupo(fardo.id, incluirSinFoto ? { sinFoto: true } : undefined)
             setResultado(res)
             setEstado('done')
         } catch (e: any) {
@@ -393,15 +415,67 @@ function ModalPublicarGrupo({ fardo, onClose }: { fardo: Fardo; onClose: () => v
         <Modal title="Publicar al grupo de WhatsApp" onClose={onClose}>
             {estado === 'confirm' && (
                 <div className="space-y-4">
-                    <p className="text-zinc-400 text-sm">
-                        Se van a enviar todas las prendas <span className="text-white font-bold">DISPONIBLES con foto</span> del fardo de <span className="text-white font-bold">{fardo.proveedor?.nombre}</span> al grupo de WhatsApp.
-                    </p>
-                    <p className="text-zinc-500 text-xs">Las prendas sin foto se van a omitir.</p>
+                    {/* Preview de prendas */}
+                    {prendas === null ? (
+                        <div className="h-16 bg-zinc-800 rounded-xl animate-pulse" />
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
+                                    <p className="text-2xl font-black text-emerald-400">{conFoto.length}</p>
+                                    <p className="text-emerald-400/70 text-xs uppercase">se van a enviar</p>
+                                </div>
+                                <div className={`p-3 rounded-xl text-center border ${sinFotoCount > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-zinc-800 border-white/5'}`}>
+                                    <p className={`text-2xl font-black ${sinFotoCount > 0 ? 'text-amber-400' : 'text-zinc-600'}`}>{sinFotoCount}</p>
+                                    <p className={`text-xs uppercase ${sinFotoCount > 0 ? 'text-amber-400/70' : 'text-zinc-600'}`}>sin foto — se omiten</p>
+                                </div>
+                            </div>
+                            {/* Thumbnails preview */}
+                            {conFoto.length > 0 && (
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                    {conFoto.slice(0, 6).map(p => (
+                                        <div key={p.id} className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-zinc-800">
+                                            <img src={p.fotos[0].url} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                    ))}
+                                    {conFoto.length > 6 && (
+                                        <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs font-bold">
+                                            +{conFoto.length - 6}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {conFoto.length === 0 && (
+                                <p className="text-amber-400 text-sm bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+                                    No hay prendas con foto para publicar. Usá 📷 Fotos para agregar.
+                                </p>
+                            )}
+                        </>
+                    )}
+                    {sinFotoCount > 0 && (
+                        <label className="flex items-center gap-3 p-3 bg-zinc-800 rounded-xl cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={incluirSinFoto}
+                                onChange={e => setIncluirSinFoto(e.target.checked)}
+                                className="accent-sky-500 w-4 h-4"
+                            />
+                            <div>
+                                <p className="text-zinc-300 text-sm font-bold">Incluir {sinFotoCount} sin foto</p>
+                                <p className="text-zinc-500 text-xs">Se publican como texto sin imagen (sin bot de reservas)</p>
+                            </div>
+                        </label>
+                    )}
                     {error && <p className="text-red-400 text-sm">{error}</p>}
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase">Cancelar</button>
-                        <button type="button" onClick={publicar} className="flex-1 py-2.5 rounded-xl bg-sky-500 text-black text-sm font-black uppercase hover:bg-sky-400">
-                            Publicar
+                        <button
+                            type="button"
+                            onClick={publicar}
+                            disabled={conFoto.length === 0 && !incluirSinFoto}
+                            className="flex-1 py-2.5 rounded-xl bg-sky-500 text-black text-sm font-black uppercase hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            Publicar {(conFoto.length + (incluirSinFoto ? sinFotoCount : 0)) > 0 ? `(${conFoto.length + (incluirSinFoto ? sinFotoCount : 0)})` : ''}
                         </button>
                     </div>
                 </div>
@@ -429,6 +503,205 @@ function ModalPublicarGrupo({ fardo, onClose }: { fardo: Fardo; onClose: () => v
                     )}
                     <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-zinc-800 text-white text-sm font-black uppercase hover:bg-zinc-700">
                         Cerrar
+                    </button>
+                </div>
+            )}
+        </Modal>
+    )
+}
+
+function ModalSesionFotos({ fardo, onClose }: { fardo: Fardo; onClose: () => void }) {
+    const [prendas, setPrendas] = useState<Prenda[] | null>(null)
+    const [sinFoto, setSinFoto] = useState<Prenda[]>([])
+    const [indice, setIndice] = useState(0)
+    const [subiendoFoto, setSubiendoFoto] = useState(false)
+    const [completadas, setCompletadas] = useState(0)
+    const [error, setError] = useState('')
+    const [similaresPendientes, setSimilaresPendientes] = useState<Prenda[]>([])
+    const [urlUltima, setUrlUltima] = useState('')
+    const [aplicandoSimilares, setAplicandoSimilares] = useState(false)
+    const inputRef = useRef<HTMLInputElement>(null)
+    const supabase = createClient()
+
+    useEffect(() => {
+        prendasApi.listar({ fardoId: fardo.id }).then(todas => {
+            setPrendas(todas)
+            setSinFoto(todas.filter(p => !p.fotos?.length))
+        })
+    }, [fardo.id])
+
+    const prenda = sinFoto[indice]
+    const total = sinFoto.length
+
+    async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file || !prenda) return
+        setSubiendoFoto(true)
+        setError('')
+        try {
+            const ext = file.name.split('.').pop()
+            const path = `prendas/${prenda.id}/${Date.now()}.${ext}`
+            const { error: uploadError } = await supabase.storage.from('prendas').upload(path, file, { upsert: false })
+            if (uploadError) throw new Error(uploadError.message)
+            const { data: { publicUrl } } = supabase.storage.from('prendas').getPublicUrl(path)
+            await prendasApi.addFoto(prenda.id, publicUrl, 0)
+            setCompletadas(c => c + 1)
+
+            // Buscar prendas similares (misma categoría + talle) entre las restantes sin foto
+            const restantes = sinFoto.slice(indice + 1)
+            const similares = restantes.filter(p =>
+                p.categoria?.nombre === prenda.categoria?.nombre &&
+                p.talle?.nombre === prenda.talle?.nombre
+            )
+
+            if (similares.length > 0) {
+                setUrlUltima(publicUrl)
+                setSimilaresPendientes(similares)
+            } else {
+                setIndice(i => i + 1)
+            }
+        } catch (e: any) {
+            setError(e.message || 'Error al subir foto')
+        } finally {
+            setSubiendoFoto(false)
+            if (inputRef.current) inputRef.current.value = ''
+        }
+    }
+
+    async function aplicarFotoSimilares() {
+        setAplicandoSimilares(true)
+        try {
+            await Promise.all(similaresPendientes.map(p => prendasApi.addFoto(p.id, urlUltima, 0)))
+            setCompletadas(c => c + similaresPendientes.length)
+            // Sacar similares del array sinFoto para no mostrarlas
+            const idsAplicadas = new Set(similaresPendientes.map(p => p.id))
+            setSinFoto(prev => {
+                const nuevo = prev.filter(p => !idsAplicadas.has(p.id))
+                return nuevo
+            })
+        } catch (e: any) {
+            setError(e.message || 'Error al aplicar fotos')
+        } finally {
+            setSimilaresPendientes([])
+            setUrlUltima('')
+            setAplicandoSimilares(false)
+            setIndice(i => i + 1)
+        }
+    }
+
+    function rechazarSimilares() {
+        setSimilaresPendientes([])
+        setUrlUltima('')
+        setIndice(i => i + 1)
+    }
+
+    function saltar() {
+        setIndice(i => i + 1)
+    }
+
+    return (
+        <Modal title={`Fotos — ${fardo.proveedor?.nombre}`} onClose={onClose}>
+            {prendas === null ? (
+                <div className="py-8 text-center space-y-3">
+                    <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-zinc-400 text-sm">Cargando prendas...</p>
+                </div>
+            ) : total === 0 ? (
+                <div className="py-8 text-center space-y-3">
+                    <p className="text-4xl">✅</p>
+                    <p className="text-white font-black">Todas las prendas tienen foto</p>
+                    <p className="text-zinc-500 text-sm">{prendas.length} prendas en este fardo</p>
+                    <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-zinc-800 text-white text-sm font-black uppercase hover:bg-zinc-700">Cerrar</button>
+                </div>
+            ) : similaresPendientes.length > 0 ? (
+                <div className="space-y-4">
+                    <div className="p-4 bg-zinc-800 rounded-xl space-y-2">
+                        <p className="text-white font-black text-center">
+                            Hay {similaresPendientes.length} prenda{similaresPendientes.length !== 1 ? 's' : ''} más de{' '}
+                            <span className="text-amber-400">{prenda?.categoria?.nombre} {prenda?.talle?.nombre}</span> sin foto
+                        </p>
+                        <p className="text-zinc-500 text-sm text-center">¿Aplicar la misma foto a todas?</p>
+                        <div className="flex gap-2 justify-center">
+                            {similaresPendientes.slice(0, 4).map(p => (
+                                <div key={p.id} className="w-14 h-14 rounded-xl bg-zinc-700 flex items-center justify-center text-2xl">👕</div>
+                            ))}
+                            {similaresPendientes.length > 4 && (
+                                <div className="w-14 h-14 rounded-xl bg-zinc-700 flex items-center justify-center text-zinc-500 text-xs font-bold">
+                                    +{similaresPendientes.length - 4}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>}
+                    <button
+                        onClick={aplicarFotoSimilares}
+                        disabled={aplicandoSimilares}
+                        className="w-full py-3 rounded-xl bg-amber-500 text-black font-black text-sm uppercase hover:bg-amber-400 disabled:opacity-50"
+                    >
+                        {aplicandoSimilares ? 'Aplicando...' : `Sí, aplicar a las ${similaresPendientes.length}`}
+                    </button>
+                    <button
+                        onClick={rechazarSimilares}
+                        disabled={aplicandoSimilares}
+                        className="w-full py-2.5 rounded-xl border border-white/10 text-zinc-500 text-sm font-bold uppercase hover:border-white/20 hover:text-zinc-400"
+                    >
+                        No, seguir una por una
+                    </button>
+                </div>
+            ) : indice >= total ? (
+                <div className="py-8 text-center space-y-3">
+                    <p className="text-4xl">🎉</p>
+                    <p className="text-white font-black">{completadas > 0 ? `${completadas} foto${completadas !== 1 ? 's' : ''} cargada${completadas !== 1 ? 's' : ''}` : 'Sesión terminada'}</p>
+                    {total - completadas > 0 && (
+                        <p className="text-zinc-500 text-sm">{total - completadas} prenda{total - completadas !== 1 ? 's' : ''} sin foto todavía</p>
+                    )}
+                    <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-zinc-800 text-white text-sm font-black uppercase hover:bg-zinc-700">Cerrar</button>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {/* Progreso */}
+                    <div className="flex items-center justify-between text-xs text-zinc-500 uppercase">
+                        <span>Prenda {indice + 1} de {total} sin foto</span>
+                        <span className="text-emerald-400 font-bold">{completadas} listas ✓</span>
+                    </div>
+                    <div className="w-full bg-zinc-800 rounded-full h-1.5">
+                        <div className="bg-amber-500 h-1.5 rounded-full transition-all" style={{ width: `${((indice) / total) * 100}%` }} />
+                    </div>
+
+                    {/* Info prenda */}
+                    <div className="p-4 bg-zinc-800 rounded-xl text-center space-y-1">
+                        <p className="text-white font-black text-lg">{prenda.categoria?.nombre}</p>
+                        <p className="text-zinc-400 text-sm">Talle {prenda.talle?.nombre}</p>
+                        <p className="text-orange-400 font-black">${Number(prenda.precioVenta).toLocaleString('es-AR')}</p>
+                    </div>
+
+                    {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>}
+
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={handleFoto}
+                    />
+
+                    <button
+                        type="button"
+                        onClick={() => inputRef.current?.click()}
+                        disabled={subiendoFoto}
+                        className="w-full py-4 rounded-xl bg-amber-500 text-black font-black text-sm uppercase hover:bg-amber-400 disabled:opacity-50 transition-colors"
+                    >
+                        {subiendoFoto ? 'Subiendo...' : '📷 Sacar foto'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={saltar}
+                        disabled={subiendoFoto}
+                        className="w-full py-2.5 rounded-xl border border-white/10 text-zinc-500 text-sm font-bold uppercase hover:border-white/20 hover:text-zinc-400 transition-colors"
+                    >
+                        Saltar →
                     </button>
                 </div>
             )}

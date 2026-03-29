@@ -121,6 +121,40 @@ export class VentasService {
         };
     }
 
+    // ── Resumen diario para el bot de WA (n8n lo llama a las 21hs) ──
+    async resumenDiario() {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const manana = new Date(hoy);
+        manana.setDate(manana.getDate() + 1);
+
+        const [ventas, reservasActivas, prendasSinFoto] = await Promise.all([
+            this.prisma.venta.findMany({
+                where: { fechaVenta: { gte: hoy, lt: manana } },
+                select: { precioFinal: true, metodoPago: true },
+            }),
+            this.prisma.reserva.count({ where: { estado: 'ACTIVA' } }),
+            this.prisma.prenda.count({
+                where: { estado: 'DISPONIBLE', fotos: { none: {} } },
+            }),
+        ]);
+
+        const totalVendido = ventas.reduce((sum, v) => sum + Number(v.precioFinal), 0);
+        const porMetodo = ventas.reduce((acc: Record<string, number>, v) => {
+            acc[v.metodoPago] = (acc[v.metodoPago] || 0) + Number(v.precioFinal);
+            return acc;
+        }, {});
+
+        return {
+            fecha: hoy.toLocaleDateString('es-AR'),
+            cantidadVentas: ventas.length,
+            totalVendido,
+            porMetodo,
+            reservasActivas,
+            prendasSinFoto,
+        };
+    }
+
     findOne(id: string) {
         return this.prisma.venta.findUnique({
             where: { id },

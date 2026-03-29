@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { VentasService } from './ventas.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
+import { Public } from '../auth/public.decorator';
 
 @Controller('ventas')
 export class VentasController {
@@ -22,6 +23,13 @@ export class VentasController {
     @Get('resumen')
     resumen() {
         return this.ventasService.resumenHoy();
+    }
+
+    // GET /api/v1/ventas/resumen-diario — resumen para n8n (público, sin auth)
+    @Public()
+    @Get('resumen-diario')
+    resumenDiario() {
+        return this.ventasService.resumenDiario();
     }
 
     // GET /api/v1/ventas/:id
