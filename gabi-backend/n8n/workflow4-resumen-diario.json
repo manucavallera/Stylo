@@ -6,11 +6,10 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 24
+              "field": "cronExpression",
+              "expression": "0 21 * * *"
             }
-          ],
-          "cronExpression": "0 21 * * *"
+          ]
         }
       },
       "id": "d4e5f6a7-0001-0001-0001-000000000004",
