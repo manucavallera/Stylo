@@ -10,9 +10,10 @@ export default function PrendaPublicaPage({ params }: { params: Promise<{ id: st
     const [prenda, setPrenda] = useState<any>(null)
     const [error, setError] = useState('')
     const [subiendoFoto, setSubiendoFoto] = useState(false)
-    const [fotos, setFotos] = useState<string[]>([])
+    const [fotos, setFotos] = useState<{ id: string; url: string }[]>([])
     const [exito, setExito] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
+    const reemplazarRef = useRef<HTMLInputElement>(null)
     const supabase = createClient()
 
     useEffect(() => {
@@ -20,33 +21,39 @@ export default function PrendaPublicaPage({ params }: { params: Promise<{ id: st
             .then(r => r.ok ? r.json() : Promise.reject('Prenda no encontrada'))
             .then(data => {
                 setPrenda(data)
-                setFotos((data.fotos ?? []).map((f: any) => f.url))
+                setFotos((data.fotos ?? []).map((f: any) => ({ id: f.id, url: f.url })))
             })
             .catch(() => setError('Prenda no encontrada'))
     }, [id])
 
-    async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    async function subirArchivo(file: File, orden: number): Promise<{ id: string; url: string }> {
+        const ext = file.name.split('.').pop() || 'jpg'
+        const path = `prendas/${id}/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage
+            .from('prendas')
+            .upload(path, file, { upsert: false })
+        if (uploadError) throw new Error(uploadError.message)
+
+        const { data: { publicUrl } } = supabase.storage.from('prendas').getPublicUrl(path)
+
+        const res = await fetch(`${API}/prendas/${id}/fotos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: publicUrl, orden }),
+        })
+        const nueva = await res.json()
+        return { id: nueva.id, url: publicUrl }
+    }
+
+    async function handleAgregar(e: React.ChangeEvent<HTMLInputElement>) {
         const files = Array.from(e.target.files ?? [])
         if (!files.length) return
         setSubiendoFoto(true)
         setError('')
         try {
             for (const file of files) {
-                const ext = file.name.split('.').pop() || 'jpg'
-                const path = `prendas/${id}/${Date.now()}.${ext}`
-                const { error: uploadError } = await supabase.storage
-                    .from('prendas')
-                    .upload(path, file, { upsert: false })
-                if (uploadError) throw new Error(uploadError.message)
-
-                const { data: { publicUrl } } = supabase.storage.from('prendas').getPublicUrl(path)
-
-                await fetch(`${API}/prendas/${id}/fotos`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: publicUrl, orden: fotos.length }),
-                })
-                setFotos(f => [...f, publicUrl])
+                const nueva = await subirArchivo(file, fotos.length)
+                setFotos(f => [...f, nueva])
             }
             setExito(true)
             setTimeout(() => setExito(false), 3000)
@@ -55,6 +62,27 @@ export default function PrendaPublicaPage({ params }: { params: Promise<{ id: st
         } finally {
             setSubiendoFoto(false)
             if (inputRef.current) inputRef.current.value = ''
+        }
+    }
+
+    async function handleReemplazar(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file || fotos.length === 0) return
+        setSubiendoFoto(true)
+        setError('')
+        try {
+            const fotoVieja = fotos[0]
+            const nueva = await subirArchivo(file, 0)
+            // Borrar la foto vieja del registro
+            await fetch(`${API}/prendas/${id}/fotos/${fotoVieja.id}`, { method: 'DELETE' })
+            setFotos(f => [nueva, ...f.slice(1)])
+            setExito(true)
+            setTimeout(() => setExito(false), 3000)
+        } catch (e: any) {
+            setError(e.message || 'Error al reemplazar foto')
+        } finally {
+            setSubiendoFoto(false)
+            if (reemplazarRef.current) reemplazarRef.current.value = ''
         }
     }
 
@@ -84,9 +112,18 @@ export default function PrendaPublicaPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 {/* Foto principal */}
-                <div className="aspect-square bg-zinc-900 rounded-2xl overflow-hidden">
+                <div className="relative aspect-square bg-zinc-900 rounded-2xl overflow-hidden">
                     {fotos.length > 0 ? (
-                        <img src={fotos[0]} alt="" className="w-full h-full object-cover" />
+                        <>
+                            <img src={fotos[0].url} alt="" className="w-full h-full object-cover" />
+                            <button
+                                onClick={() => reemplazarRef.current?.click()}
+                                disabled={subiendoFoto}
+                                className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/70 backdrop-blur-sm text-white text-xs font-bold rounded-xl border border-white/20 hover:bg-black/90 transition-all disabled:opacity-50"
+                            >
+                                {subiendoFoto ? '...' : '↺ Reemplazar'}
+                            </button>
+                        </>
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-6xl text-zinc-700">👕</div>
                     )}
@@ -107,14 +144,14 @@ export default function PrendaPublicaPage({ params }: { params: Promise<{ id: st
                     </span>
                 </div>
 
-                {/* Subir fotos */}
+                {/* Fotos adicionales */}
                 <div className="space-y-3">
                     <p className="text-zinc-400 text-xs uppercase font-bold tracking-widest">Fotos ({fotos.length})</p>
                     {fotos.length > 1 && (
                         <div className="grid grid-cols-3 gap-2">
-                            {fotos.slice(1).map((url, i) => (
+                            {fotos.slice(1).map((foto, i) => (
                                 <div key={i} className="aspect-square rounded-xl overflow-hidden bg-zinc-900">
-                                    <img src={url} alt="" className="w-full h-full object-cover" />
+                                    <img src={foto.url} alt="" className="w-full h-full object-cover" />
                                 </div>
                             ))}
                         </div>
@@ -126,7 +163,9 @@ export default function PrendaPublicaPage({ params }: { params: Promise<{ id: st
                     >
                         {subiendoFoto ? 'Subiendo...' : '+ Agregar foto'}
                     </button>
-                    <input ref={inputRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={handleFoto} />
+                    {/* Sin capture= para permitir cámara Y galería */}
+                    <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAgregar} />
+                    <input ref={reemplazarRef} type="file" accept="image/*" className="hidden" onChange={handleReemplazar} />
                 </div>
 
                 {exito && (
