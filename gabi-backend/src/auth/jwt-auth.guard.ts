@@ -5,12 +5,15 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import * as jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-    private jwtSecret = process.env.SUPABASE_JWT_SECRET!;
+    private supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
 
     constructor(private reflector: Reflector) { }
 
@@ -30,12 +33,16 @@ export class JwtAuthGuard implements CanActivate {
 
         const token = authorization.split(' ')[1];
 
-        try {
-            const decoded = jwt.verify(token, this.jwtSecret);
-            request.user = decoded;
-            return true;
-        } catch {
+        const {
+            data: { user },
+            error,
+        } = await this.supabase.auth.getUser(token);
+
+        if (error || !user) {
             throw new UnauthorizedException('Token inválido o expirado');
         }
+
+        request.user = user;
+        return true;
     }
 }
