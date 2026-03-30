@@ -151,7 +151,7 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionF
 
 function ModalNuevoFardo({ onClose, onCreado }: { onClose: () => void; onCreado: () => void }) {
     const [proveedores, setProveedores] = useState<Proveedor[]>([])
-    const [form, setForm] = useState({ proveedorId: '', fechaCompra: new Date().toISOString().split('T')[0], costoTotal: '', moneda: 'ARS', pesoKg: '', notas: '' })
+    const [form, setForm] = useState({ proveedorId: '', fechaCompra: new Date().toISOString().split('T')[0], costoTotal: '', moneda: 'ARS', tipoCambio: '', pesoKg: '', notas: '' })
     const [guardando, setGuardando] = useState(false)
     const [error, setError] = useState('')
 
@@ -168,6 +168,7 @@ function ModalNuevoFardo({ onClose, onCreado }: { onClose: () => void; onCreado:
                 fechaCompra: form.fechaCompra,
                 costoTotal: Number(form.costoTotal),
                 moneda: form.moneda as 'ARS' | 'USD',
+                tipoCambio: form.tipoCambio ? Number(form.tipoCambio) : undefined,
                 pesoKg: form.pesoKg ? Number(form.pesoKg) : undefined,
             })
             onCreado()
@@ -203,7 +204,7 @@ function ModalNuevoFardo({ onClose, onCreado }: { onClose: () => void; onCreado:
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <label className="label">Costo total</label>
+                        <label className="label">Costo total ({form.moneda})</label>
                         <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={form.costoTotal} onChange={e => setForm(p => ({ ...p, costoTotal: e.target.value }))} required />
                     </div>
                     <div>
@@ -211,6 +212,17 @@ function ModalNuevoFardo({ onClose, onCreado }: { onClose: () => void; onCreado:
                         <input className="input" type="number" min="0" step="0.1" placeholder="—" value={form.pesoKg} onChange={e => setForm(p => ({ ...p, pesoKg: e.target.value }))} />
                     </div>
                 </div>
+                {form.moneda === 'USD' && (
+                    <div>
+                        <label className="label">Tipo de cambio (ARS por USD)</label>
+                        <input className="input" type="number" min="0" step="1" placeholder="ej: 1200" value={form.tipoCambio} onChange={e => setForm(p => ({ ...p, tipoCambio: e.target.value }))} required />
+                        {form.costoTotal && form.tipoCambio && (
+                            <p className="text-xs text-orange-400 mt-1">
+                                = ${(Number(form.costoTotal) * Number(form.tipoCambio)).toLocaleString('es-AR')} ARS
+                            </p>
+                        )}
+                    </div>
+                )}
                 {error && <p className="text-red-400 text-sm">{error}</p>}
                 <div className="flex gap-3 pt-2">
                     <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase hover:border-white/20 transition-colors">Cancelar</button>
@@ -238,7 +250,10 @@ function ModalAbrirFardo({ fardo, titulo, onClose, onAbierto }: { fardo: Fardo; 
     }, [])
 
     const totalPrendas = items.reduce((s, i) => s + Number(i.cantidad || 0), 0)
-    const costoUnitario = totalPrendas > 0 ? Number(fardo.costoTotal) / totalPrendas : 0
+    const costoBaseArs = fardo.moneda === 'USD' && fardo.tipoCambio
+        ? Number(fardo.costoTotal) * Number(fardo.tipoCambio)
+        : Number(fardo.costoTotal)
+    const costoUnitario = totalPrendas > 0 ? costoBaseArs / totalPrendas : 0
     const precioSugerido = Math.round(costoUnitario * 3)
 
     function addItem() {
@@ -303,7 +318,10 @@ function ModalAbrirFardo({ fardo, titulo, onClose, onAbierto }: { fardo: Fardo; 
             <div className="mb-4 p-3 bg-zinc-800 rounded-xl text-sm grid grid-cols-3 gap-3 text-center">
                 <div>
                     <p className="text-zinc-500 text-xs uppercase">Costo total</p>
-                    <p className="text-white font-bold">${Number(fardo.costoTotal).toLocaleString('es-AR')}</p>
+                    <p className="text-white font-bold">{fardo.moneda === 'USD' ? 'U$D' : '$'}{Number(fardo.costoTotal).toLocaleString('es-AR')}</p>
+                    {fardo.moneda === 'USD' && fardo.tipoCambio && (
+                        <p className="text-zinc-500 text-xs">${costoBaseArs.toLocaleString('es-AR')} ARS</p>
+                    )}
                 </div>
                 <div>
                     <p className="text-zinc-500 text-xs uppercase">Prendas</p>

@@ -33,6 +33,11 @@ export class CreateFardoDto {
     @IsOptional()
     pesoKg?: number;
 
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    tipoCambio?: number;
+
     @IsString()
     @IsOptional()
     notas?: string;

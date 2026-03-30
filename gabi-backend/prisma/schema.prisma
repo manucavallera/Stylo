@@ -94,6 +94,7 @@ model Fardo {
   fechaCompra  DateTime    @map("fecha_compra")
   costoTotal   Decimal     @map("costo_total") @db.Decimal(12, 2)
   moneda       Moneda      @default(ARS)
+  tipoCambio   Decimal?    @map("tipo_cambio") @db.Decimal(12, 2)
   pesoKg       Decimal?    @map("peso_kg") @db.Decimal(8, 2)
   totalPrendas Int         @default(0) @map("total_prendas")
   estado       EstadoFardo @default(PENDIENTE_APERTURA)

@@ -25,6 +25,7 @@ export class FardosService {
                 fechaCompra: new Date(dto.fechaCompra),
                 costoTotal: dto.costoTotal,
                 moneda: dto.moneda,
+                tipoCambio: dto.tipoCambio,
                 pesoKg: dto.pesoKg,
                 notas: dto.notas,
                 estado: 'PENDIENTE_APERTURA',
@@ -72,9 +73,13 @@ export class FardosService {
             0,
         );
 
-        // Costo unitario = costo total del fardo / total de prendas
-        // Siempre en ARS. Si fue comprado en USD, Gabi ingresa el equivalente en ARS.
-        const costoUnitario = Number(fardo.costoTotal) / totalPrendas;
+        // Costo unitario = costo total del fardo / total de prendas (siempre en ARS)
+        // Si el fardo es USD, convertir con tipoCambio antes de dividir
+        const costoBase =
+            fardo.moneda === 'USD' && fardo.tipoCambio
+                ? Number(fardo.costoTotal) * Number(fardo.tipoCambio)
+                : Number(fardo.costoTotal);
+        const costoUnitario = costoBase / totalPrendas;
 
         // Generar IDs y QRs ANTES de la transacción para no bloquearla
         const prendaData: any[] = [];
