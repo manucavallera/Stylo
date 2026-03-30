@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import { fardosApi } from '@/lib/api'
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://americano-stylo.gygo4l.easypanel.host'
+const FRONTEND_URL = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://americano-stylo.gygo4l.easypanel.host').replace(/\/$/, '')
 
 export default function EtiquetasPage() {
     const params = useParams()
