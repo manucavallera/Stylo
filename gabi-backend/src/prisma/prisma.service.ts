@@ -13,6 +13,7 @@ export class PrismaService
       try {
         await this.$connect();
         this.logger.log('Conectado a la base de datos');
+        this.iniciarHeartbeat();
         return;
       } catch (err) {
         intentos++;
@@ -21,6 +22,17 @@ export class PrismaService
       }
     }
     throw new Error('No se pudo conectar a la base de datos después de 5 intentos');
+  }
+
+  private iniciarHeartbeat() {
+    setInterval(async () => {
+      try {
+        await this.$queryRaw`SELECT 1`;
+      } catch (err) {
+        this.logger.warn(`Heartbeat falló, reconectando: ${err.message}`);
+        try { await this.$connect(); } catch {}
+      }
+    }, 30000); // cada 30 segundos
   }
 
   async onModuleDestroy() {
