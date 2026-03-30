@@ -64,6 +64,7 @@ export class PrendasController {
     }
 
     // DELETE /api/v1/prendas/:id/fotos/:fotoId
+    @Public()
     @Delete(':id/fotos/:fotoId')
     @HttpCode(204)
     removeFoto(@Param('id') id: string, @Param('fotoId') fotoId: string) {
