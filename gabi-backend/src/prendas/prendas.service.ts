@@ -125,11 +125,21 @@ export class PrendasService {
             `💰 $${precio}\n` +
             `📲 Reenviá esta foto al número de la tienda para reservar${codigoInvisible}`;
 
+        // Descargar imagen en el backend para evitar que Evolution API resuelva DNS de Supabase
+        let mediaBase64: string | null = null;
+        try {
+            const imgRes = await fetch(prenda.fotos[0].url);
+            if (imgRes.ok) {
+                const buffer = await imgRes.arrayBuffer();
+                mediaBase64 = Buffer.from(buffer).toString('base64');
+            }
+        } catch { /* fallback a URL si falla */ }
+
         for (const grupo of grupos) {
             const res = await fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-                body: JSON.stringify({ number: grupo.groupId, mediatype: 'image', mimetype: 'image/jpeg', media: prenda.fotos[0].url, caption, fileName: 'prenda.jpg' }),
+                body: JSON.stringify({ number: grupo.groupId, mediatype: 'image', mimetype: 'image/jpeg', media: mediaBase64 ?? prenda.fotos[0].url, caption, fileName: 'prenda.jpg' }),
             });
             if (!res.ok) throw new BadRequestException(`Error al enviar a ${grupo.nombre}: ${await res.text()}`);
         }

@@ -166,6 +166,16 @@ export class FardosService {
                 `💰 $${precio}\n` +
                 `📲 Reenviá esta foto al número de la tienda para reservar${codigoInvisible}`;
 
+            // Descargar imagen en el backend para evitar que Evolution API resuelva DNS de Supabase
+            let mediaBase64: string | null = null;
+            try {
+                const imgRes = await fetch(foto.url);
+                if (imgRes.ok) {
+                    const buffer = await imgRes.arrayBuffer();
+                    mediaBase64 = Buffer.from(buffer).toString('base64');
+                }
+            } catch { /* si falla la descarga, usamos la URL como fallback */ }
+
             for (const grupo of grupos) {
                 try {
                     const res = await fetch(
@@ -177,7 +187,7 @@ export class FardosService {
                                 number: grupo.groupId,
                                 mediatype: 'image',
                                 mimetype: 'image/jpeg',
-                                media: foto.url,
+                                media: mediaBase64 ?? foto.url,
                                 caption,
                                 fileName: 'prenda.jpg',
                             }),
