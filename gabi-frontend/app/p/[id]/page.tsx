@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { use, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://manu-stylobackend.gygo4l.easypanel.host/api/v1'
 
-export default function PrendaPublicaPage({ params }: { params: { id: string } }) {
+export default function PrendaPublicaPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params)
     const [prenda, setPrenda] = useState<any>(null)
     const [error, setError] = useState('')
     const [subiendoFoto, setSubiendoFoto] = useState(false)
@@ -15,14 +16,14 @@ export default function PrendaPublicaPage({ params }: { params: { id: string } }
     const supabase = createClient()
 
     useEffect(() => {
-        fetch(`${API}/prendas/${params.id}`)
+        fetch(`${API}/prendas/${id}`)
             .then(r => r.ok ? r.json() : Promise.reject('Prenda no encontrada'))
             .then(data => {
                 setPrenda(data)
                 setFotos((data.fotos ?? []).map((f: any) => f.url))
             })
             .catch(() => setError('Prenda no encontrada'))
-    }, [params.id])
+    }, [id])
 
     async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
         const files = Array.from(e.target.files ?? [])
@@ -32,7 +33,7 @@ export default function PrendaPublicaPage({ params }: { params: { id: string } }
         try {
             for (const file of files) {
                 const ext = file.name.split('.').pop() || 'jpg'
-                const path = `prendas/${params.id}/${Date.now()}.${ext}`
+                const path = `prendas/${id}/${Date.now()}.${ext}`
                 const { error: uploadError } = await supabase.storage
                     .from('prendas')
                     .upload(path, file, { upsert: false })
@@ -40,7 +41,7 @@ export default function PrendaPublicaPage({ params }: { params: { id: string } }
 
                 const { data: { publicUrl } } = supabase.storage.from('prendas').getPublicUrl(path)
 
-                await fetch(`${API}/prendas/${params.id}/fotos`, {
+                await fetch(`${API}/prendas/${id}/fotos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: publicUrl, orden: fotos.length }),
