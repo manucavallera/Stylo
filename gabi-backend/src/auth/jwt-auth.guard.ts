@@ -10,7 +10,7 @@ import { IS_PUBLIC_KEY } from './public.decorator';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-    private jwtSecret = Buffer.from(process.env.SUPABASE_JWT_SECRET!, 'base64');
+    private jwtSecret = process.env.SUPABASE_JWT_SECRET!;
 
     constructor(private reflector: Reflector) { }
 
