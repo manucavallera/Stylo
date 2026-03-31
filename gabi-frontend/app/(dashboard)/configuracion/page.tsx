@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { categoriasApi, tallesApi, proveedoresApi, gruposWaApi, type CategoriaOTalle, type Proveedor, type GrupoWhatsapp } from '@/lib/api'
+import { categoriasApi, tallesApi, proveedoresApi, gruposWaApi, configuracionApi, type CategoriaOTalle, type Proveedor, type GrupoWhatsapp, type ConfiguracionTienda } from '@/lib/api'
 
-type Tab = 'categorias' | 'talles' | 'proveedores' | 'gruposWa' | 'guia'
+type Tab = 'general' | 'categorias' | 'talles' | 'proveedores' | 'gruposWa' | 'guia'
 
 const TAB_LABELS: Record<Tab, string> = {
+    general: '⚙️ General',
     categorias: 'Categorías',
     talles: 'Talles',
     proveedores: 'Proveedores',
@@ -14,7 +15,7 @@ const TAB_LABELS: Record<Tab, string> = {
 }
 
 export default function ConfiguracionPage() {
-    const [tab, setTab] = useState<Tab>('categorias')
+    const [tab, setTab] = useState<Tab>('general')
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
@@ -23,7 +24,7 @@ export default function ConfiguracionPage() {
                 <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">Categorías · Talles · Proveedores · Guía</p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
                 {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
                     <button
                         key={t}
@@ -35,11 +36,63 @@ export default function ConfiguracionPage() {
                 ))}
             </div>
 
+            {tab === 'general' && <SeccionGeneral />}
             {tab === 'categorias' && <SeccionSimple titulo="Categorías" apiKey="categorias" api={categoriasApi} />}
             {tab === 'talles' && <SeccionSimple titulo="Talles" apiKey="talles" api={tallesApi} />}
             {tab === 'proveedores' && <SeccionProveedores />}
             {tab === 'gruposWa' && <SeccionGruposWa />}
             {tab === 'guia' && <SeccionGuia />}
+        </div>
+    )
+}
+
+// ── Sección General ──────────────────────────────────────────────
+function SeccionGeneral() {
+    const [config, setConfig] = useState<ConfiguracionTienda | null>(null)
+    const [minutos, setMinutos] = useState('')
+    const [guardando, setGuardando] = useState(false)
+    const [ok, setOk] = useState(false)
+
+    useEffect(() => {
+        configuracionApi.get().then(c => { setConfig(c); setMinutos(String(c.minutosReserva)) })
+    }, [])
+
+    async function handleGuardar(e: React.FormEvent) {
+        e.preventDefault()
+        setGuardando(true)
+        setOk(false)
+        try {
+            await configuracionApi.update({ minutosReserva: Number(minutos) })
+            setOk(true)
+        } finally {
+            setGuardando(false)
+        }
+    }
+
+    if (!config) return <div className="h-24 bg-zinc-900 rounded-2xl animate-pulse" />
+
+    return (
+        <div className="space-y-4">
+            <h2 className="text-zinc-400 text-xs uppercase tracking-widest font-black">Configuración general</h2>
+            <form onSubmit={handleGuardar} className="bg-zinc-900 border border-white/5 rounded-2xl p-5 space-y-4">
+                <div>
+                    <label className="label">Tiempo de reserva (minutos)</label>
+                    <p className="text-zinc-500 text-xs mb-2">Cuánto tiempo tiene el cliente para enviar el comprobante antes que se cancele la reserva automáticamente.</p>
+                    <input
+                        className="input w-32"
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={minutos}
+                        onChange={e => setMinutos(e.target.value)}
+                        required
+                    />
+                </div>
+                {ok && <p className="text-emerald-400 text-sm">✓ Guardado</p>}
+                <button type="submit" disabled={guardando} className="px-6 py-2.5 bg-orange-500 text-black font-black text-sm uppercase rounded-xl hover:bg-orange-400 disabled:opacity-50">
+                    {guardando ? 'Guardando...' : 'Guardar'}
+                </button>
+            </form>
         </div>
     )
 }

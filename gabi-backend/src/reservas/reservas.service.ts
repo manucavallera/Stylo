@@ -5,6 +5,7 @@ import {
     Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConfiguracionService } from '../configuracion/configuracion.service';
 import {
     CreateReservaDto,
     ConfirmarReservaDto,
@@ -17,7 +18,10 @@ export class ReservasService {
     private readonly logger = new Logger(ReservasService.name);
     private readonly n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly configuracionService: ConfiguracionService,
+    ) { }
 
     private async notificarN8n(path: string, body: object) {
         if (!this.n8nWebhookUrl) return;
@@ -235,7 +239,8 @@ export class ReservasService {
         });
         if (!prenda) throw new NotFoundException('Prenda no encontrada');
 
-        return this.create({ prendaId: prenda.id, clienteId: cliente.id });
+        const config = await this.configuracionService.getConfig();
+        return this.create({ prendaId: prenda.id, clienteId: cliente.id, minutosExpiracion: config.minutosReserva });
     }
 
     // ── Recibir comprobante desde bot (guarda URL, NO confirma la venta) ──

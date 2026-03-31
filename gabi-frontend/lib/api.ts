@@ -151,3 +151,9 @@ export interface RoiFardo { costoFardo: number; totalVendido: number; ganancia: 
 export interface Proveedor { id: string; nombre: string; telefono?: string; notas?: string }
 export interface CategoriaOTalle { id: string; nombre: string }
 export interface GrupoWhatsapp { id: string; nombre: string; groupId: string; activo: boolean }
+export interface ConfiguracionTienda { minutosReserva: number }
+
+export const configuracionApi = {
+    get: () => api.get<ConfiguracionTienda>('/configuracion'),
+    update: (data: Partial<ConfiguracionTienda>) => api.put<ConfiguracionTienda>('/configuracion', data),
+}

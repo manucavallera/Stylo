@@ -17,6 +17,7 @@ import { CajaModule } from './caja/caja.module';
 import { VentasModule } from './ventas/ventas.module';
 import { ComprobantesModule } from './comprobantes/comprobantes.module';
 import { GruposWhatsappModule } from './grupos-whatsapp/grupos-whatsapp.module';
+import { ConfiguracionModule } from './configuracion/configuracion.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { GruposWhatsappModule } from './grupos-whatsapp/grupos-whatsapp.module';
     VentasModule,
     ComprobantesModule,
     GruposWhatsappModule,
+    ConfiguracionModule,
   ],
   controllers: [AppController],
   providers: [

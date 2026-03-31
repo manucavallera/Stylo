@@ -87,6 +87,13 @@ model Proveedor {
 // FARDO
 // ============================================================
 
+model ConfiguracionTienda {
+  id             String @id @default("singleton")
+  minutosReserva Int    @default(20) @map("minutos_reserva")
+
+  @@map("configuracion_tienda")
+}
+
 model Fardo {
   id           String      @id @default(uuid())
   nombre       String?
