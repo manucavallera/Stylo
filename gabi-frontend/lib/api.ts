@@ -133,15 +133,15 @@ export interface ResumenHoy {
     gananciaEstimada: number
     porMetodoPago: { metodoPago: string; _sum: { precioFinal: number }; _count: number }[]
 }
-export interface Prenda { id: string; qrCode: string; estado: string; precioVenta: number; precioPromocional?: number; nota?: string; categoria: { nombre: string }; talle: { nombre: string }; fotos: { url: string }[]; fardo?: { id: string; fechaCompra: string; proveedor?: { nombre: string } } }
-export interface Fardo { id: string; costoTotal: number; moneda: string; tipoCambio?: number; totalPrendas: number; estado: string; fechaCompra: string; proveedor: { nombre: string } }
+export interface Prenda { id: string; qrCode: string; estado: string; precioVenta: number; precioPromocional?: number; nota?: string; categoria: { nombre: string }; talle: { nombre: string }; fotos: { url: string }[]; fardo?: { id: string; nombre?: string; fechaCompra: string; proveedor?: { nombre: string } } }
+export interface Fardo { id: string; nombre?: string; costoTotal: number; moneda: string; tipoCambio?: number; totalPrendas: number; estado: string; fechaCompra: string; proveedor: { nombre: string } }
 export interface Venta { id: string; precioFinal: number; metodoPago: string; canalVenta: string; fechaVenta: string; prenda: Prenda }
 export interface Reserva { id: string; estado: string; fechaExpiracion: string; prenda: Prenda; cliente: { nombre: string; telefonoWhatsapp?: string } }
 export interface GastoCaja { id: string; concepto: string; monto: number; createdAt: string }
 export interface Caja { id: string; fecha: string; montoApertura: number; montoEsperado: number; montoReal?: number; diferencia?: number; estado: string; gastos?: GastoCaja[] }
 export interface Cliente { id: string; nombre: string; telefonoWhatsapp?: string }
 export interface NuevaVenta { prendaId: string; metodoPago: string; canalVenta: string; precioFinal: number; cajaId?: string; clienteId?: string; reservaId?: string }
-export interface NuevoFardo { proveedorId: string; fechaCompra: string; costoTotal: number; moneda: string; tipoCambio?: number; pesoKg?: number }
+export interface NuevoFardo { nombre?: string; proveedorId: string; fechaCompra: string; costoTotal: number; moneda: string; tipoCambio?: number; pesoKg?: number }
 export interface AbrirFardo { items: { categoriaId: string; talleId: string; cantidad: number; precioVenta: number; tieneFalla?: boolean }[] }
 export interface NuevaReserva { prendaId: string; clienteId: string; minutosExpiracion?: number }
 export interface RoiFardo { costoFardo: number; totalVendido: number; ganancia: number; roi: number; prendasVendidas: number; totalPrendas: number }
