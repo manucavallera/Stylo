@@ -142,7 +142,11 @@ export default function PosPage() {
                                     className="w-full flex items-center justify-between bg-zinc-900 border border-white/5 hover:border-orange-500/30 rounded-xl px-4 py-3 transition-all"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <span className="text-2xl">👕</span>
+                                        {p.fotos?.[0] ? (
+                                            <img src={p.fotos[0].url} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                                        ) : (
+                                            <span className="text-2xl w-10 text-center">👕</span>
+                                        )}
                                         <div className="text-left">
                                             <p className="text-white text-sm font-bold">{p.categoria?.nombre}</p>
                                             <p className="text-zinc-500 text-xs">Talle {p.talle?.nombre}</p>
@@ -180,7 +184,11 @@ export default function PosPage() {
                 <form onSubmit={registrarVenta} className="bg-zinc-900 border border-orange-500/20 rounded-2xl p-5 space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <span className="text-3xl">👕</span>
+                            {prenda.fotos?.[0] ? (
+                                <img src={prenda.fotos[0].url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                            ) : (
+                                <span className="text-3xl">👕</span>
+                            )}
                             <div>
                                 <p className="text-white font-black uppercase">{prenda.categoria?.nombre}</p>
                                 <p className="text-zinc-400 text-sm">Talle {prenda.talle?.nombre}</p>
