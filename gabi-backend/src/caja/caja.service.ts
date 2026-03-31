@@ -19,8 +19,16 @@ export class CajaService {
         const cajaExistente = await this.prisma.cajaDiaria.findUnique({
             where: { fecha: hoy },
         });
+
+        // Si ya existe una caja cerrada hoy, la reactiva en vez de crear una nueva
         if (cajaExistente) {
-            throw new ConflictException('Ya existe una caja para hoy');
+            if (cajaExistente.estado === 'ABIERTA') {
+                throw new ConflictException('Ya hay una caja abierta para hoy');
+            }
+            return this.prisma.cajaDiaria.update({
+                where: { id: cajaExistente.id },
+                data: { estado: 'ABIERTA', montoReal: null, diferencia: null },
+            });
         }
 
         return this.prisma.$transaction(async (tx) => {
