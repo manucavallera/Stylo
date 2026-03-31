@@ -186,7 +186,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: 'Lo sentimos, esa prenda ya no está disponible para reservar. 😕' } }];"
+        "jsCode": "const remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: 'Esta prenda ya está reservada o no está disponible. Si crees que es un error, escribinos 😊' } }];"
       },
       "id": "c1b2c3d4-0007-0007-0007-000000000001",
       "name": "Formatear Error Reserva",
