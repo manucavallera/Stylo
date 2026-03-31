@@ -21,6 +21,7 @@ export class FardosService {
     create(dto: CreateFardoDto) {
         return this.prisma.fardo.create({
             data: {
+                nombre: dto.nombre,
                 proveedorId: dto.proveedorId,
                 fechaCompra: new Date(dto.fechaCompra),
                 costoTotal: dto.costoTotal,

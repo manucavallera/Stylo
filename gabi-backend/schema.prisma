@@ -86,6 +86,7 @@ model Proveedor {
 
 model Fardo {
   id           String      @id @default(uuid())
+  nombre       String?
   proveedorId  String      @map("proveedor_id")
   fechaCompra  DateTime    @map("fecha_compra")
   costoTotal   Decimal     @map("costo_total") @db.Decimal(12, 2)

@@ -32,7 +32,7 @@ export class PrendasService {
                 categoria: true,
                 talle: true,
                 fotos: { orderBy: { orden: 'asc' } },
-                fardo: { select: { id: true, fechaCompra: true, moneda: true, proveedor: { select: { nombre: true } } } },
+                fardo: { select: { id: true, nombre: true, fechaCompra: true, moneda: true, proveedor: { select: { nombre: true } } } },
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -59,7 +59,7 @@ export class PrendasService {
     async findByQr(qrCode: string) {
         const prenda = await this.prisma.prenda.findUnique({
             where: { qrCode },
-            include: { categoria: true, talle: true, fotos: true },
+            include: { categoria: true, talle: true, fotos: true, fardo: { select: { id: true, nombre: true, proveedor: { select: { nombre: true } } } } },
         });
         if (!prenda) throw new NotFoundException('QR no reconocido');
         return prenda;

@@ -16,6 +16,10 @@ export enum Moneda {
 
 export class CreateFardoDto {
     @IsString()
+    @IsOptional()
+    nombre?: string;
+
+    @IsString()
     proveedorId: string;
 
     @IsDateString()

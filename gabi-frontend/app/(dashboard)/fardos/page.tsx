@@ -113,8 +113,9 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionF
                     </span>
                     <span className="text-zinc-500 text-xs">{new Date(fardo.fechaCompra).toLocaleDateString('es-AR')}</span>
                 </div>
-                <p className="text-white font-bold">{fardo.proveedor?.nombre ?? '—'}</p>
+                <p className="text-white font-bold">{fardo.nombre ?? fardo.proveedor?.nombre ?? '—'}</p>
                 <p className="text-zinc-400 text-sm">
+                    {fardo.nombre && <span className="text-zinc-500">{fardo.proveedor?.nombre} · </span>}
                     ${Number(fardo.costoTotal).toLocaleString('es-AR')} {fardo.moneda}
                     {fardo.totalPrendas > 0 && ` · ${fardo.totalPrendas} prendas`}
                 </p>
@@ -151,7 +152,7 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionF
 
 function ModalNuevoFardo({ onClose, onCreado }: { onClose: () => void; onCreado: () => void }) {
     const [proveedores, setProveedores] = useState<Proveedor[]>([])
-    const [form, setForm] = useState({ proveedorId: '', fechaCompra: new Date().toISOString().split('T')[0], costoTotal: '', moneda: 'ARS', tipoCambio: '', pesoKg: '', notas: '' })
+    const [form, setForm] = useState({ nombre: '', proveedorId: '', fechaCompra: new Date().toISOString().split('T')[0], costoTotal: '', moneda: 'ARS', tipoCambio: '', pesoKg: '', notas: '' })
     const [guardando, setGuardando] = useState(false)
     const [error, setError] = useState('')
 
@@ -164,6 +165,7 @@ function ModalNuevoFardo({ onClose, onCreado }: { onClose: () => void; onCreado:
         setError('')
         try {
             await fardosApi.crear({
+                nombre: form.nombre || undefined,
                 proveedorId: form.proveedorId,
                 fechaCompra: form.fechaCompra,
                 costoTotal: Number(form.costoTotal),
@@ -182,6 +184,10 @@ function ModalNuevoFardo({ onClose, onCreado }: { onClose: () => void; onCreado:
     return (
         <Modal title="Nuevo Fardo" onClose={onClose}>
             <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="label">Nombre <span className="text-zinc-600">opcional</span></label>
+                    <input className="input" type="text" placeholder="Ej: Fardo verano #3, Liquidación invierno..." value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} />
+                </div>
                 <div>
                     <label className="label">Proveedor</label>
                     <select className="input" value={form.proveedorId} onChange={e => setForm(p => ({ ...p, proveedorId: e.target.value }))} required>

@@ -184,6 +184,11 @@ export default function PosPage() {
                             <div>
                                 <p className="text-white font-black uppercase">{prenda.categoria?.nombre}</p>
                                 <p className="text-zinc-400 text-sm">Talle {prenda.talle?.nombre}</p>
+                                {prenda.fardo && (
+                                    <p className="text-zinc-500 text-xs mt-0.5">
+                                        {prenda.fardo.nombre ?? prenda.fardo.proveedor?.nombre ?? 'Fardo sin nombre'}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <button type="button" onClick={() => setPrenda(null)} className="text-zinc-600 hover:text-zinc-400 text-sm">✕ Cambiar</button>
