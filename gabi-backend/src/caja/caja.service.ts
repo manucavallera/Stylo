@@ -25,9 +25,31 @@ export class CajaService {
             if (cajaExistente.estado === 'ABIERTA') {
                 throw new ConflictException('Ya hay una caja abierta para hoy');
             }
-            return this.prisma.cajaDiaria.update({
-                where: { id: cajaExistente.id },
-                data: { estado: 'ABIERTA', montoReal: null, diferencia: null },
+            return this.prisma.$transaction(async (tx) => {
+                await tx.cajaDiaria.update({
+                    where: { id: cajaExistente.id },
+                    data: { estado: 'ABIERTA', montoReal: null, diferencia: null },
+                });
+
+                // Asignar ventas huérfanas de hoy
+                const huerfanas = await tx.venta.aggregate({
+                    where: { cajaId: null, fechaVenta: { gte: hoy } },
+                    _sum: { precioFinal: true },
+                });
+                const sumaHuerfanas = Number(huerfanas._sum.precioFinal ?? 0);
+
+                if (sumaHuerfanas > 0) {
+                    await tx.venta.updateMany({
+                        where: { cajaId: null, fechaVenta: { gte: hoy } },
+                        data: { cajaId: cajaExistente.id },
+                    });
+                    await tx.cajaDiaria.update({
+                        where: { id: cajaExistente.id },
+                        data: { montoEsperado: { increment: sumaHuerfanas } },
+                    });
+                }
+
+                return tx.cajaDiaria.findUnique({ where: { id: cajaExistente.id } });
             });
         }
 
