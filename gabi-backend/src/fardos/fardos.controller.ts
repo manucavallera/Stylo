@@ -19,6 +19,12 @@ export class FardosController {
         return this.fardosService.findAll();
     }
 
+    // GET /api/v1/fardos/historial — fardos cerrados (debe ir ANTES de :id)
+    @Get('historial')
+    findHistorial() {
+        return this.fardosService.findHistorial();
+    }
+
     // GET /api/v1/fardos/:id — ver fardo con sus prendas
     @Get(':id')
     findOne(@Param('id') id: string) {
@@ -35,12 +41,6 @@ export class FardosController {
     @Post(':id/publicar-grupo')
     publicarAlGrupo(@Param('id') id: string, @Body() body?: { sinFoto?: boolean }) {
         return this.fardosService.publicarAlGrupo(id, body?.sinFoto ?? false);
-    }
-
-    // GET /api/v1/fardos/historial — fardos cerrados
-    @Get('historial')
-    findHistorial() {
-        return this.fardosService.findHistorial();
     }
 
     // POST /api/v1/fardos/:id/cerrar — archivar fardo
