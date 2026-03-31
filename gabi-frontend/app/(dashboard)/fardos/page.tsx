@@ -12,6 +12,7 @@ const ESTADO_COLORS: Record<string, string> = {
 
 export default function FardosPage() {
     const [fardos, setFardos] = useState<Fardo[]>([])
+    const [historial, setHistorial] = useState<Fardo[]>([])
     const [loading, setLoading] = useState(true)
     const [modalNuevo, setModalNuevo] = useState(false)
     const [fardoAbriendo, setFardoAbriendo] = useState<Fardo | null>(null)
@@ -21,7 +22,25 @@ export default function FardosPage() {
 
     async function cargar() {
         setLoading(true)
-        fardosApi.listar().then(setFardos).finally(() => setLoading(false))
+        Promise.all([fardosApi.listar(), fardosApi.historial()])
+            .then(([activos, cerrados]) => { setFardos(activos); setHistorial(cerrados) })
+            .finally(() => setLoading(false))
+    }
+
+    async function handleCerrar(fardo: Fardo) {
+        if (!confirm(`¿Cerrar el fardo "${fardo.nombre ?? fardo.proveedor?.nombre}"? Las prendas disponibles quedarán como retiradas.`)) return
+        try {
+            await fardosApi.cerrar(fardo.id)
+            cargar()
+        } catch (e: any) { alert(e.message) }
+    }
+
+    async function handleEliminar(fardo: Fardo) {
+        if (!confirm(`¿Eliminar el fardo "${fardo.nombre ?? fardo.proveedor?.nombre}"?`)) return
+        try {
+            await fardosApi.eliminar(fardo.id)
+            cargar()
+        } catch (e: any) { alert(e.message) }
     }
 
     useEffect(() => { cargar() }, [])
@@ -31,7 +50,7 @@ export default function FardosPage() {
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div>
                     <h1 className="text-2xl font-black text-white uppercase">Fardos</h1>
-                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">{fardos.length} fardos registrados</p>
+                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">{fardos.length} fardos activos</p>
                 </div>
                 <button
                     onClick={() => setModalNuevo(true)}
@@ -46,7 +65,7 @@ export default function FardosPage() {
                     {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-zinc-900 rounded-2xl animate-pulse" />)}
                 </div>
             ) : fardos.length === 0 ? (
-                <div className="text-center py-20 text-zinc-500">No hay fardos registrados</div>
+                <div className="text-center py-20 text-zinc-500">No hay fardos activos</div>
             ) : (
                 <div className="space-y-3">
                     {fardos.map(f => (
@@ -57,8 +76,27 @@ export default function FardosPage() {
                             onAgregarPrendas={() => setFardoAgregando(f)}
                             onPublicarGrupo={() => setFardoPublicando(f)}
                             onSesionFotos={() => setFardoSesionFotos(f)}
+                            onCerrar={() => handleCerrar(f)}
+                            onEliminar={() => handleEliminar(f)}
                         />
                     ))}
+                </div>
+            )}
+
+            {historial.length > 0 && (
+                <div className="space-y-3">
+                    <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">Historial de fardos cerrados</h2>
+                    <div className="space-y-2">
+                        {historial.map(f => (
+                            <div key={f.id} className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-zinc-400 text-sm font-bold">{f.nombre ?? f.proveedor?.nombre ?? '—'}</p>
+                                    <p className="text-zinc-600 text-xs">{new Date(f.fechaCompra).toLocaleDateString('es-AR')} · {f.totalPrendas} prendas · ${Number(f.costoTotal).toLocaleString('es-AR')} {f.moneda}</p>
+                                </div>
+                                <span className="px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase bg-zinc-500/10 text-zinc-400 border-zinc-500/20">CERRADO</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -103,7 +141,7 @@ export default function FardosPage() {
     )
 }
 
-function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionFotos }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onPublicarGrupo: () => void; onSesionFotos: () => void }) {
+function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionFotos, onCerrar, onEliminar }: { fardo: Fardo; onAbrir: () => void; onAgregarPrendas: () => void; onPublicarGrupo: () => void; onSesionFotos: () => void; onCerrar: () => void; onEliminar: () => void }) {
     return (
         <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
@@ -122,9 +160,14 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionF
             </div>
             <div className="flex gap-2 flex-wrap">
                 {fardo.estado === 'PENDIENTE_APERTURA' && (
-                    <button onClick={onAbrir} className="px-4 py-2 bg-orange-500 text-black font-black text-xs uppercase rounded-xl hover:bg-orange-400 transition-colors whitespace-nowrap">
-                        Abrir Fardo
-                    </button>
+                    <>
+                        <button onClick={onAbrir} className="px-4 py-2 bg-orange-500 text-black font-black text-xs uppercase rounded-xl hover:bg-orange-400 transition-colors whitespace-nowrap">
+                            Abrir Fardo
+                        </button>
+                        <button onClick={onEliminar} className="px-4 py-2 border border-red-500/30 text-red-400 font-black text-xs uppercase rounded-xl hover:bg-red-500/10 transition-colors whitespace-nowrap">
+                            Eliminar
+                        </button>
+                    </>
                 )}
                 {fardo.estado === 'ABIERTO' && (
                     <>
@@ -142,6 +185,9 @@ function FardoRow({ fardo, onAbrir, onAgregarPrendas, onPublicarGrupo, onSesionF
                         </button>
                         <button onClick={onPublicarGrupo} className="px-4 py-2 border border-sky-500/30 text-sky-400 font-black text-xs uppercase rounded-xl hover:bg-sky-500/10 transition-colors whitespace-nowrap">
                             Publicar grupo
+                        </button>
+                        <button onClick={onCerrar} className="px-4 py-2 border border-zinc-500/30 text-zinc-400 font-black text-xs uppercase rounded-xl hover:bg-zinc-500/10 transition-colors whitespace-nowrap">
+                            Cerrar
                         </button>
                     </>
                 )}

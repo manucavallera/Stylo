@@ -35,12 +35,49 @@ export class FardosService {
         });
     }
 
-    // ── Listar todos los fardos ──────────────────────────────────
+    // ── Listar fardos activos (sin CERRADO) ─────────────────────
     findAll() {
         return this.prisma.fardo.findMany({
+            where: { estado: { not: 'CERRADO' } },
             include: { proveedor: true },
-            orderBy: { proveedor: { nombre: 'asc' } },
+            orderBy: { createdAt: 'desc' },
         });
+    }
+
+    // ── Historial de fardos cerrados ─────────────────────────────
+    findHistorial() {
+        return this.prisma.fardo.findMany({
+            where: { estado: 'CERRADO' },
+            include: { proveedor: true },
+            orderBy: { updatedAt: 'desc' },
+        });
+    }
+
+    // ── Cerrar fardo ─────────────────────────────────────────────
+    async cerrar(id: string) {
+        const fardo = await this.findOne(id);
+        if (fardo.estado !== 'ABIERTO') {
+            throw new BadRequestException('Solo se pueden cerrar fardos ABIERTOS');
+        }
+        return this.prisma.$transaction([
+            this.prisma.prenda.updateMany({
+                where: { fardoId: id, estado: 'DISPONIBLE' },
+                data: { estado: 'RETIRADO' },
+            }),
+            this.prisma.fardo.update({
+                where: { id },
+                data: { estado: 'CERRADO' },
+            }),
+        ]);
+    }
+
+    // ── Eliminar fardo (solo PENDIENTE_APERTURA) ─────────────────
+    async remove(id: string) {
+        const fardo = await this.findOne(id);
+        if (fardo.estado !== 'PENDIENTE_APERTURA') {
+            throw new BadRequestException('Solo se pueden eliminar fardos que no fueron abiertos');
+        }
+        return this.prisma.fardo.delete({ where: { id } });
     }
 
     // ── Ver un fardo con todas sus prendas ───────────────────────

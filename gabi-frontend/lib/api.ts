@@ -70,6 +70,9 @@ export const fardosApi = {
     publicarAlGrupo: (id: string, body?: { sinFoto?: boolean }) => api.post<{ enviadas: number; sinFoto: number; errores: string[] }>(`/fardos/${id}/publicar-grupo`, body ?? {}),
     publicarPrendaAlGrupo: (id: string) => api.post(`/prendas/${id}/publicar-grupo`, {}),
     roi: (id: string) => api.get<RoiFardo>(`/fardos/${id}/roi`),
+    historial: () => api.get<Fardo[]>('/fardos/historial'),
+    cerrar: (id: string) => api.post(`/fardos/${id}/cerrar`, {}),
+    eliminar: (id: string) => api.delete(`/fardos/${id}`),
 }
 
 export const reservasApi = {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
 import { FardosService } from './fardos.service';
 import { CreateFardoDto } from './dto/create-fardo.dto';
 import { AbrirFardoDto } from './dto/abrir-fardo.dto';
@@ -35,6 +35,24 @@ export class FardosController {
     @Post(':id/publicar-grupo')
     publicarAlGrupo(@Param('id') id: string, @Body() body?: { sinFoto?: boolean }) {
         return this.fardosService.publicarAlGrupo(id, body?.sinFoto ?? false);
+    }
+
+    // GET /api/v1/fardos/historial — fardos cerrados
+    @Get('historial')
+    findHistorial() {
+        return this.fardosService.findHistorial();
+    }
+
+    // POST /api/v1/fardos/:id/cerrar — archivar fardo
+    @Post(':id/cerrar')
+    cerrar(@Param('id') id: string) {
+        return this.fardosService.cerrar(id);
+    }
+
+    // DELETE /api/v1/fardos/:id — eliminar fardo sin prendas
+    @Delete(':id')
+    remove(@Param('id') id: string) {
+        return this.fardosService.remove(id);
     }
 
     // GET /api/v1/fardos/:id/roi — análisis de rentabilidad del fardo
