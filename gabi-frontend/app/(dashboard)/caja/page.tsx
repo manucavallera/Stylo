@@ -75,7 +75,7 @@ export default function CajaPage() {
                                 <p className="text-white font-black text-2xl mt-3">${Number(caja.montoApertura).toLocaleString('es-AR')}</p>
                                 <p className="text-zinc-500 text-xs uppercase tracking-wide">Monto de apertura</p>
                             </div>
-                            {caja.estado === 'ABIERTA' && (
+                            {caja.estado === 'ABIERTA' ? (
                                 <div className="flex sm:flex-col gap-2">
                                     <button
                                         onClick={() => setModalGasto(true)}
@@ -90,6 +90,13 @@ export default function CajaPage() {
                                         Cerrar Caja
                                     </button>
                                 </div>
+                            ) : (
+                                <button
+                                    onClick={() => setModalAbrir(true)}
+                                    className="px-5 py-2.5 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-emerald-500/30 hover:text-emerald-400 transition-colors"
+                                >
+                                    Reabrir Caja
+                                </button>
                             )}
                         </div>
                     </div>
