@@ -77,7 +77,13 @@ export class PrendasService {
         if (prenda.venta) {
             throw new BadRequestException('No se puede eliminar una prenda que ya fue vendida');
         }
-        await this.prisma.prenda.delete({ where: { id } });
+        await this.prisma.$transaction([
+            this.prisma.prenda.delete({ where: { id } }),
+            this.prisma.fardo.update({
+                where: { id: prenda.fardoId },
+                data: { totalPrendas: { decrement: 1 } },
+            }),
+        ]);
     }
 
     // ── Fotos ────────────────────────────────────────────────────
