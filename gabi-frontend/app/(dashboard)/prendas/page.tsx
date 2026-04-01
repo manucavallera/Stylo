@@ -212,7 +212,7 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                 )}
                 {prenda.fardo && (
                     <p className="text-zinc-600 text-xs mt-0.5 truncate">
-                        {prenda.fardo.proveedor?.nombre ?? 'Fardo'}
+                        {prenda.fardo.nombre ? `${prenda.fardo.nombre}` : 'Fardo'}{prenda.fardo.proveedor?.nombre ? ` · ${prenda.fardo.proveedor.nombre}` : ''}
                     </p>
                 )}
             </div>
