@@ -478,19 +478,22 @@ export class ReservasService {
         }
 
         const config = await this.configuracionService.getConfig();
-        const resultados: Array<{ desc: string; ok: boolean; motivo?: string }> = [];
+        const resultados: Array<{ desc: string; ok: boolean; horaExpiracion?: string; motivo?: string }> = [];
 
         for (const item of items) {
             const categoria = item.prenda.categoria?.nombre ?? '';
             const talle = item.prenda.talle?.nombre ?? '';
             const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
             try {
-                await this.create({
+                const reserva = await this.create({
                     prendaId: item.prendaId,
                     clienteId: cliente.id,
                     minutosExpiracion: config.minutosReserva,
                 });
-                resultados.push({ desc, ok: true });
+                const horaExpiracion = reserva.fechaExpiracion.toLocaleTimeString('es-AR', {
+                    hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires',
+                });
+                resultados.push({ desc, ok: true, horaExpiracion });
             } catch (err: any) {
                 resultados.push({ desc, ok: false, motivo: err.message ?? 'No disponible' });
             }
