@@ -141,7 +141,7 @@ export interface ResumenHoy {
 export interface Prenda { id: string; qrCode: string; estado: string; precioVenta: number; precioPromocional?: number; nota?: string; categoria: { nombre: string }; talle: { nombre: string }; fotos: { url: string }[]; fardo?: { id: string; nombre?: string; fechaCompra: string; proveedor?: { nombre: string } } }
 export interface Fardo { id: string; nombre?: string; costoTotal: number; moneda: string; tipoCambio?: number; totalPrendas: number; estado: string; fechaCompra: string; proveedor: { nombre: string } }
 export interface Venta { id: string; precioFinal: number; metodoPago: string; canalVenta: string; fechaVenta: string; prenda: Prenda }
-export interface Reserva { id: string; estado: string; fechaExpiracion: string; prenda: Prenda; cliente: { nombre: string; telefonoWhatsapp?: string } }
+export interface Reserva { id: string; estado: string; fechaExpiracion: string; createdAt: string; prenda: Prenda; cliente: { id: string; nombre: string; telefonoWhatsapp?: string } | null }
 export interface GastoCaja { id: string; concepto: string; monto: number; createdAt: string }
 export interface Caja { id: string; fecha: string; montoApertura: number; montoEsperado: number; montoReal?: number; diferencia?: number; estado: string; gastos?: GastoCaja[] }
 export interface Cliente { id: string; nombre: string; telefonoWhatsapp?: string }
