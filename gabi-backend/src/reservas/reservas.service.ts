@@ -414,13 +414,25 @@ export class ReservasService {
 
     // ── Agregar prenda al carrito bot ───────────────────────────
     async agregarAlCarritoBot(dto: { telefonoWhatsapp: string; prendaId: string }) {
-        // Buscar prenda por código corto
+        // Buscar prenda por código corto — sin filtrar por estado para dar mensaje preciso
         const prenda = await this.prisma.prenda.findFirst({
-            where: { id: { startsWith: dto.prendaId }, estado: 'DISPONIBLE' },
-            include: { categoria: true, talle: true },
+            where: { id: { startsWith: dto.prendaId } },
+            include: { categoria: true, talle: true, reservas: { where: { estado: 'ACTIVA' }, take: 1 } },
         });
         if (!prenda) {
-            throw new NotFoundException('Esta prenda ya no está disponible 😊');
+            return { ok: false, estado: 'NO_ENCONTRADA' };
+        }
+        if (prenda.estado === 'VENDIDO' || prenda.estado === 'RETIRADO') {
+            return { ok: false, estado: prenda.estado };
+        }
+        if (prenda.estado === 'RESERVADO') {
+            const reservaActiva = prenda.reservas[0];
+            const horaExpiracion = reservaActiva
+                ? reservaActiva.fechaExpiracion.toLocaleTimeString('es-AR', {
+                    hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires',
+                  })
+                : null;
+            return { ok: false, estado: 'RESERVADO', horaExpiracion };
         }
 
         // Verificar que no esté ya en el carrito de este cliente
@@ -478,12 +490,13 @@ export class ReservasService {
         }
 
         const config = await this.configuracionService.getConfig();
-        const resultados: Array<{ desc: string; ok: boolean; horaExpiracion?: string; motivo?: string }> = [];
+        const resultados: Array<{ desc: string; precio: number; ok: boolean; horaExpiracion?: string; motivo?: string }> = [];
 
         for (const item of items) {
             const categoria = item.prenda.categoria?.nombre ?? '';
             const talle = item.prenda.talle?.nombre ?? '';
             const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
+            const precio = Number(item.prenda.precioVenta);
             try {
                 const reserva = await this.create({
                     prendaId: item.prendaId,
@@ -493,9 +506,9 @@ export class ReservasService {
                 const horaExpiracion = reserva.fechaExpiracion.toLocaleTimeString('es-AR', {
                     hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires',
                 });
-                resultados.push({ desc, ok: true, horaExpiracion });
+                resultados.push({ desc, precio, ok: true, horaExpiracion });
             } catch (err: any) {
-                resultados.push({ desc, ok: false, motivo: err.message ?? 'No disponible' });
+                resultados.push({ desc, precio, ok: false, motivo: err.message ?? 'No disponible' });
             }
         }
 
