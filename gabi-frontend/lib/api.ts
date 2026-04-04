@@ -81,6 +81,8 @@ export const reservasApi = {
     crear: (data: NuevaReserva) => api.post<Reserva>('/reservas', data),
     confirmar: (id: string, data?: { comprobanteUrl?: string }) =>
         api.post(`/reservas/${id}/confirmar`, data ?? {}),
+    confirmarMultiple: (ids: string[], comprobanteUrl?: string) =>
+        api.post(`/reservas/confirmar-multiple`, { ids, comprobanteUrl }),
     cancelar: (id: string) => api.post(`/reservas/${id}/cancelar`, {}),
 }
 

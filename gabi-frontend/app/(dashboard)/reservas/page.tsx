@@ -25,6 +25,17 @@ function useTiempoRestante(fechaExpiracion: string) {
     return { texto, urgente }
 }
 
+// Agrupa reservas activas por clienteId (o por id si no tiene cliente)
+function agruparPorCliente(reservas: Reserva[]) {
+    const grupos: Record<string, Reserva[]> = {}
+    for (const r of reservas) {
+        const key = r.cliente?.id ?? r.id
+        if (!grupos[key]) grupos[key] = []
+        grupos[key].push(r)
+    }
+    return Object.values(grupos)
+}
+
 export default function ReservasPage() {
     const [reservas, setReservas] = useState<Reserva[]>([])
     const [loading, setLoading] = useState(true)
@@ -62,6 +73,19 @@ export default function ReservasPage() {
         }
     }
 
+    async function confirmarTodas(ids: string[]) {
+        setAccionando(ids[0])
+        setError('')
+        try {
+            await reservasApi.confirmarMultiple(ids)
+            await cargar()
+        } catch (e: any) {
+            setError(e.message)
+        } finally {
+            setAccionando(null)
+        }
+    }
+
     async function cancelar(id: string) {
         if (!confirm('¿Cancelar esta reserva?')) return
         setAccionando(id)
@@ -75,6 +99,8 @@ export default function ReservasPage() {
             setAccionando(null)
         }
     }
+
+    const grupos = tab === 'activas' ? agruparPorCliente(reservas) : null
 
     return (
         <div className="space-y-6">
@@ -104,6 +130,39 @@ export default function ReservasPage() {
                 </div>
             ) : reservas.length === 0 ? (
                 <div className="text-center py-20 text-zinc-500">No hay reservas</div>
+            ) : tab === 'activas' && grupos ? (
+                <div className="space-y-5">
+                    {grupos.map(grupo => {
+                        const cliente = grupo[0].cliente
+                        const ids = grupo.map(r => r.id)
+                        const total = grupo.reduce((sum, r) => sum + Number(r.prenda?.precioVenta ?? 0), 0)
+                        const esGrupo = grupo.length > 1
+                        return (
+                            <div key={ids[0]} className="space-y-2">
+                                {esGrupo && (
+                                    <div className="flex items-center justify-between px-1">
+                                        <div>
+                                            <span className="text-white font-black text-sm">{cliente?.nombre ?? 'Cliente desconocido'}</span>
+                                            <span className="text-zinc-500 text-xs ml-2">{grupo.length} prendas · ${total.toLocaleString('es-AR')}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => confirmarTodas(ids)}
+                                            disabled={accionando !== null}
+                                            className="px-4 py-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-black uppercase rounded-xl hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
+                                        >
+                                            ✓ Confirmar todas
+                                        </button>
+                                    </div>
+                                )}
+                                <div className={`space-y-2 ${esGrupo ? 'pl-2 border-l-2 border-emerald-500/20' : ''}`}>
+                                    {grupo.map(r => (
+                                        <ReservaRow key={r.id} reserva={r} accionando={accionando} esHistorial={false} onConfirmar={confirmar} onCancelar={cancelar} />
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
             ) : (
                 <div className="space-y-3">
                     {reservas.map(r => <ReservaRow key={r.id} reserva={r} accionando={accionando} esHistorial={tab === 'historial'} onConfirmar={confirmar} onCancelar={cancelar} />)}
