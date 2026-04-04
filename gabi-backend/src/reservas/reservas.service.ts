@@ -4,6 +4,7 @@ import {
     BadRequestException,
     Logger,
 } from '@nestjs/common';
+import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfiguracionService } from '../configuracion/configuracion.service';
 import {
@@ -33,6 +34,61 @@ export class ReservasService {
             });
         } catch (err) {
             this.logger.warn(`n8n webhook ${path} falló: ${err.message}`);
+        }
+    }
+
+    private async analizarComprobante(imageUrl: string, precioPrenda: number) {
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        if (!apiKey) return null;
+
+        try {
+            const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
+            if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`);
+            const buffer = await imgRes.arrayBuffer();
+            const base64 = Buffer.from(buffer).toString('base64');
+            const rawType = imgRes.headers.get('content-type') ?? 'image/jpeg';
+            const mediaType = (['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+                .find(t => rawType.includes(t)) ?? 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+            const client = new Anthropic({ apiKey });
+            const response = await client.messages.create({
+                model: 'claude-haiku-4-5',
+                max_tokens: 256,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'image',
+                            source: { type: 'base64', media_type: mediaType, data: base64 },
+                        },
+                        {
+                            type: 'text',
+                            text: 'Analizá este comprobante de transferencia bancaria argentina. Extraé: monto (número entero sin separadores), alias o CVU del destinatario, fecha y hora de la operación, nombre del banco o billetera. Respondé SOLO con JSON válido sin texto extra: {"monto": number|null, "alias": string|null, "fecha": string|null, "banco": string|null}',
+                        },
+                    ],
+                }],
+            });
+
+            const textBlock = response.content.find(b => b.type === 'text');
+            if (!textBlock || textBlock.type !== 'text') return null;
+
+            const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return null;
+
+            const data = JSON.parse(jsonMatch[0]);
+            const monto = typeof data.monto === 'number' ? data.monto : null;
+            const coincide = monto !== null ? Math.round(monto) === Math.round(precioPrenda) : null;
+
+            return {
+                monto,
+                alias: data.alias ?? null,
+                fecha: data.fecha ?? null,
+                banco: data.banco ?? null,
+                coincide,
+            };
+        } catch (err: any) {
+            this.logger.warn(`Claude Vision falló: ${err.message}`);
+            return null;
         }
     }
 
@@ -308,6 +364,7 @@ export class ReservasService {
 
         const reserva = await this.prisma.reserva.findFirst({
             where: { clienteId: cliente.id, estado: 'ACTIVA' },
+            include: { prenda: { include: { categoria: true, talle: true } } },
             orderBy: { createdAt: 'desc' },
         });
         if (!reserva) return { ok: false };
@@ -317,12 +374,40 @@ export class ReservasService {
             data: { comprobanteUrl: dto.comprobanteUrl },
         });
 
-        // Notificar a Gabi que llegó un comprobante
-        this.notificarGabi(
+        // Analizar comprobante con Claude Vision (fire-and-forget con resultado)
+        const precio = Number(reserva.prenda.precioVenta);
+        const categoria = reserva.prenda.categoria?.nombre ?? '';
+        const talle = reserva.prenda.talle?.nombre ?? '';
+        const descPrenda = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Prenda';
+
+        const analisis = dto.comprobanteUrl
+            ? await this.analizarComprobante(dto.comprobanteUrl, precio)
+            : null;
+
+        // Armar WA a Gabi con el análisis
+        let mensajeGabi =
             `📸 *Comprobante recibido*\n` +
-            `Cliente: ${dto.telefonoWhatsapp}\n\n` +
-            `Entrá a Reservas para confirmar el pago.`,
-        );
+            `Cliente: ${dto.telefonoWhatsapp}\n` +
+            `Prenda: ${descPrenda} — $${precio.toLocaleString('es-AR')}\n`;
+
+        if (analisis) {
+            const montoStr = analisis.monto?.toLocaleString('es-AR') ?? '?';
+            const estadoMonto = analisis.coincide === true
+                ? `✅ $${montoStr} — coincide`
+                : analisis.coincide === false
+                    ? `⚠️ $${montoStr} — NO coincide (esperado $${precio.toLocaleString('es-AR')})`
+                    : `$${montoStr}`;
+
+            mensajeGabi += `\n💰 Monto: ${estadoMonto}`;
+            if (analisis.banco) mensajeGabi += `\n🏦 ${analisis.banco}`;
+            if (analisis.fecha) mensajeGabi += `\n📅 ${analisis.fecha}`;
+            if (analisis.alias) mensajeGabi += `\n🔑 ${analisis.alias}`;
+        } else {
+            mensajeGabi += `\n_(No se pudo analizar la imagen)_`;
+        }
+
+        mensajeGabi += `\n\nEntrá a Reservas para confirmar el pago.`;
+        this.notificarGabi(mensajeGabi);
 
         return { ok: true };
     }
