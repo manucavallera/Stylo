@@ -105,11 +105,19 @@ export class FardosService {
             throw new BadRequestException('Este fardo ya fue cerrado y procesado');
         }
 
+        if (fardo.estado === 'ABIERTO') {
+            throw new BadRequestException('Este fardo ya fue abierto. No se puede abrir dos veces');
+        }
+
         // Total de prendas que entran
         const totalPrendas = dto.items.reduce(
             (sum, item) => sum + item.cantidad,
             0,
         );
+
+        if (totalPrendas === 0) {
+            throw new BadRequestException('Debés ingresar al menos una prenda para abrir el fardo');
+        }
 
         // Costo unitario = costo total del fardo / total de prendas (siempre en ARS)
         // Si el fardo es USD, convertir con tipoCambio antes de dividir
@@ -294,13 +302,17 @@ export class FardosService {
             (sum, v) => sum + Number(v.precioFinal),
             0,
         );
-        const costoFardo = Number(fardo.costoTotal);
-        const ganancia = totalVendido - costoFardo;
-        const roi = costoFardo > 0 ? (ganancia / costoFardo) * 100 : 0;
+        // Siempre comparar en ARS: si el fardo es USD, convertir con tipoCambio
+        const costoFardoArs =
+            fardo.moneda === 'USD' && fardo.tipoCambio
+                ? Number(fardo.costoTotal) * Number(fardo.tipoCambio)
+                : Number(fardo.costoTotal);
+        const ganancia = totalVendido - costoFardoArs;
+        const roi = costoFardoArs > 0 ? (ganancia / costoFardoArs) * 100 : 0;
 
         return {
             fardoId: id,
-            costoFardo,
+            costoFardo: costoFardoArs,
             moneda: fardo.moneda,
             totalPrendas: fardo.totalPrendas,
             prendasVendidas: ventas.length,

@@ -38,30 +38,30 @@ export class ReservasService {
 
     // ── Crear reserva ────────────────────────────────────────────
     async create(dto: CreateReservaDto) {
-        // Verificar que la prenda existe y está disponible
+        // Verificar que la prenda existe
         const prenda = await this.prisma.prenda.findUnique({
             where: { id: dto.prendaId },
         });
         if (!prenda) throw new NotFoundException('Prenda no encontrada');
-        if (prenda.estado !== 'DISPONIBLE') {
-            throw new BadRequestException(
-                `La prenda no está disponible (estado: ${prenda.estado})`,
-            );
-        }
-
-        // Verificar que no hay reserva activa para esta prenda
-        const reservaActiva = await this.prisma.reserva.findFirst({
-            where: { prendaId: dto.prendaId, estado: 'ACTIVA' },
-        });
-        if (reservaActiva) {
-            throw new BadRequestException('La prenda ya tiene una reserva activa');
-        }
 
         const minutos = dto.minutosExpiracion ?? 20;
         const fechaExpiracion = new Date(Date.now() + minutos * 60 * 1000);
 
-        // Transacción: crear reserva + marcar prenda como RESERVADO
+        // Transacción atómica: el update de prenda solo ocurre si está DISPONIBLE,
+        // eliminando la race condition entre el check y la escritura.
         return this.prisma.$transaction(async (tx) => {
+            // Actualizar prenda solo si sigue DISPONIBLE — atómico
+            const updated = await tx.prenda.updateMany({
+                where: { id: dto.prendaId, estado: 'DISPONIBLE' },
+                data: { estado: 'RESERVADO' },
+            });
+
+            if (updated.count === 0) {
+                throw new BadRequestException(
+                    'Esta prenda ya está reservada o no está disponible',
+                );
+            }
+
             const reserva = await tx.reserva.create({
                 data: {
                     prendaId: dto.prendaId,
@@ -73,11 +73,6 @@ export class ReservasService {
                     prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 }, categoria: true, talle: true } },
                     cliente: true,
                 },
-            });
-
-            await tx.prenda.update({
-                where: { id: dto.prendaId },
-                data: { estado: 'RESERVADO' },
             });
 
             return reserva;
