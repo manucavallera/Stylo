@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parsear webhook de Evolution API\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\nconst nombreCliente = data.pushName || null;\n\n// Decodificar código invisible (\\u200B=0, \\u200C=1, 4 bits por hex char)\nfunction decodeInvisible(text) {\n  const zwChars = [...text].filter(c => c === '\\u200B' || c === '\\u200C');\n  if (zwChars.length < 32) return null;\n  const bits = zwChars.slice(0, 32).map(c => c === '\\u200B' ? '0' : '1').join('');\n  let hex = '';\n  for (let i = 0; i < 32; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);\n  return hex;\n}\n\nconst staticData = $getWorkflowStaticData('global');\n\n// Caso 1: imagen con código invisible → preguntar si quiere reservar\nconst prendaId = decodeInvisible(caption);\nif (prendaId) {\n  staticData[`pending_${telefono}`] = { prendaId, ts: Date.now() };\n  return [{ json: { tipo: 'pre_reservar', telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 2: texto SI → confirmar reserva pendiente\nconst textoNorm = caption.trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nif (textoNorm === 'SI') {\n  const pending = staticData[`pending_${telefono}`];\n  if (pending && (Date.now() - pending.ts) < 10 * 60 * 1000) {\n    delete staticData[`pending_${telefono}`];\n    return [{ json: { tipo: 'reservar', prendaId: pending.prendaId, telefono, remoteJid, nombreCliente } }];\n  }\n  return [];\n}\n\n// Caso 3: imagen sin código → comprobante de pago\nif (message.imageMessage) {\n  const mediaUrl = message.imageMessage?.url || null;\n  return [{ json: { tipo: 'comprobante', telefono, remoteJid, mediaUrl } }];\n}\n\n// Cualquier otro mensaje: ignorar\nreturn [];"
+        "jsCode": "// Parsear webhook de Evolution API\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\nconst nombreCliente = data.pushName || null;\n\n// Decodificar código invisible (\\u200B=0, \\u200C=1, 4 bits por hex char)\nfunction decodeInvisible(text) {\n  const zwChars = [...text].filter(c => c === '\\u200B' || c === '\\u200C');\n  if (zwChars.length < 32) return null;\n  const bits = zwChars.slice(0, 32).map(c => c === '\\u200B' ? '0' : '1').join('');\n  let hex = '';\n  for (let i = 0; i < 32; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);\n  return hex;\n}\n\n// Caso 1: imagen con código invisible → agregar al carrito\nconst prendaId = decodeInvisible(caption);\nif (prendaId) {\n  return [{ json: { tipo: 'carrito_agregar', prendaId, telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 2: texto LISTO → confirmar todas las reservas del carrito\nconst textoNorm = caption.trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nif (textoNorm === 'LISTO') {\n  return [{ json: { tipo: 'carrito_confirmar', telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 3: imagen sin código → comprobante de pago\nif (message.imageMessage) {\n  const mediaUrl = message.imageMessage?.url || null;\n  return [{ json: { tipo: 'comprobante', telefono, remoteJid, mediaUrl } }];\n}\n\n// Cualquier otro mensaje: ignorar\nreturn [];"
       },
       "id": "c1b2c3d4-0002-0002-0002-000000000001",
       "name": "Parsear Mensaje",
@@ -31,9 +31,9 @@
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "conditions": [
             {
-              "id": "cond-pre",
+              "id": "cond-carrito",
               "leftValue": "={{ $json.tipo }}",
-              "rightValue": "pre_reservar",
+              "rightValue": "carrito_agregar",
               "operator": { "type": "string", "operation": "equals" }
             }
           ],
@@ -42,20 +42,40 @@
         "options": {}
       },
       "id": "c1b2c3d4-0015-0015-0015-000000000001",
-      "name": "¿Pre-Reservar?",
+      "name": "¿Agregar al Carrito?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [680, 400]
     },
     {
       "parameters": {
-        "jsCode": "const remoteJid = $json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: '👗 ¡Buena elección! ¿Querés reservar esta prenda?\\n\\nRespondé *SI* para confirmar (tenés 10 minutos).' } }];"
+        "method": "POST",
+        "url": "http://manu-stylobackend:3001/api/v1/reservas/agregar-carrito-bot",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "telefonoWhatsapp", "value": "={{ $json.telefono }}" },
+            { "name": "prendaId", "value": "={{ $json.prendaId }}" }
+          ]
+        },
+        "options": {}
       },
-      "id": "c1b2c3d4-0013-0013-0013-000000000001",
-      "name": "Formatear Pregunta",
+      "id": "c1b2c3d4-0016-0016-0016-000000000001",
+      "name": "Agregar Al Carrito",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 220],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = $json;\nconst remoteJid = $('Parsear Mensaje').first().json.remoteJid;\n\nif (!res.ok) {\n  return [{ json: { remoteJid, mensaje: 'Esta prenda ya no está disponible. Si crees que es un error, escribinos 😊' } }];\n}\n\nconst total = res.totalEnCarrito || 1;\nconst desc = res.desc || 'Prenda';\nconst yaEstaba = res.yaEstabaEnCarrito;\n\nlet mensaje;\nif (yaEstaba) {\n  mensaje = `Esta prenda ya estaba en tu lista 🛒\\n\\nTenés ${total} prenda${total > 1 ? 's' : ''} guardada${total > 1 ? 's' : ''}. Mandá más fotos o respondé *LISTO* para reservar todo.`;\n} else {\n  mensaje = `✅ Guardé *${desc}* en tu lista 🛒\\n\\nTenés ${total} prenda${total > 1 ? 's' : ''} guardada${total > 1 ? 's' : ''}. Mandá más fotos o respondé *LISTO* para reservar todo.`;\n}\n\nreturn [{ json: { remoteJid, mensaje } }];"
+      },
+      "id": "c1b2c3d4-0017-0017-0017-000000000001",
+      "name": "Formatear Respuesta Carrito",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 220]
+      "position": [1120, 220]
     },
     {
       "parameters": {
@@ -74,11 +94,11 @@
         },
         "options": {}
       },
-      "id": "c1b2c3d4-0014-0014-0014-000000000001",
-      "name": "WhatsApp - Pregunta Reserva",
+      "id": "c1b2c3d4-0018-0018-0018-000000000001",
+      "name": "WhatsApp - Respuesta Carrito",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 220],
+      "position": [1340, 220],
       "continueOnFail": true
     },
     {
@@ -87,9 +107,9 @@
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "conditions": [
             {
-              "id": "cond-tipo",
+              "id": "cond-confirmar",
               "leftValue": "={{ $json.tipo }}",
-              "rightValue": "reservar",
+              "rightValue": "carrito_confirmar",
               "operator": { "type": "string", "operation": "equals" }
             }
           ],
@@ -98,7 +118,7 @@
         "options": {}
       },
       "id": "c1b2c3d4-0009-0009-0009-000000000001",
-      "name": "¿Reservar o Comprobante?",
+      "name": "¿Confirmar Carrito o Comprobante?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [900, 560]
@@ -106,19 +126,18 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://manu-stylobackend:3001/api/v1/reservas/reservar-bot",
+        "url": "http://manu-stylobackend:3001/api/v1/reservas/confirmar-carrito-bot",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
             { "name": "telefonoWhatsapp", "value": "={{ $json.telefono }}" },
-            { "name": "prendaId", "value": "={{ $json.prendaId }}" },
             { "name": "nombreCliente", "value": "={{ $json.nombreCliente }}" }
           ]
         },
         "options": {}
       },
       "id": "c1b2c3d4-0003-0003-0003-000000000001",
-      "name": "Crear Reserva",
+      "name": "Confirmar Carrito",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1120, 460],
@@ -126,73 +145,13 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
-          "conditions": [
-            {
-              "id": "cond-001",
-              "leftValue": "={{ $json.fechaExpiracion }}",
-              "rightValue": "",
-              "operator": { "type": "string", "operation": "exists", "singleValue": true }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "c1b2c3d4-0004-0004-0004-000000000001",
-      "name": "¿Reserva OK?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1340, 460]
-    },
-    {
-      "parameters": {
-        "jsCode": "const reserva = $json;\nconst hora = new Date(reserva.fechaExpiracion).toLocaleTimeString('es-AR', {\n  hour: '2-digit',\n  minute: '2-digit',\n  timeZone: 'America/Argentina/Buenos_Aires'\n});\nconst cat = reserva.prenda?.categoria?.nombre || 'Prenda';\nconst talle = reserva.prenda?.talle?.nombre || '';\nconst desc = cat + (talle ? ` — Talle ${talle}` : '');\nconst remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nconst fotoUrl = reserva.prenda?.fotos?.[0]?.url || null;\nconst caption = `✅ ¡Te reservé la prenda!\\n\\n*${desc}*\\n\\nTenés hasta las *${hora}* para enviarnos el comprobante de pago. Si no lo mandás a tiempo, la reserva se cancela automáticamente. 🙌`;\nreturn [{ json: { remoteJid, caption, fotoUrl } }];"
+        "jsCode": "const res = $json;\nconst remoteJid = $('Parsear Mensaje').first().json.remoteJid;\n\nif (!res.reservadas && !res.detalle) {\n  return [{ json: { remoteJid, mensaje: 'No tenés prendas guardadas. Reenviá las fotos que te interesan y después respondé *LISTO* 😊' } }];\n}\n\nconst reservadas = res.reservadas || 0;\nconst fallidas = res.fallidas || 0;\nconst detalle = res.detalle || [];\n\nif (reservadas === 0) {\n  return [{ json: { remoteJid, mensaje: 'No pudimos reservar ninguna prenda, puede que ya no estén disponibles. Si creés que es un error, escribinos 😊' } }];\n}\n\nconst lista = detalle\n  .filter(d => d.ok)\n  .map(d => `• ${d.desc}`)\n  .join('\\n');\n\nlet mensaje = `✅ ¡Reservé ${reservadas} prenda${reservadas > 1 ? 's' : ''}!\\n\\n${lista}\\n\\nEnvianos el comprobante de pago para confirmar tu compra. 🙌`;\n\nif (fallidas > 0) {\n  const listaFallidas = detalle\n    .filter(d => !d.ok)\n    .map(d => `• ${d.desc}`)\n    .join('\\n');\n  mensaje += `\\n\\n⚠️ ${fallidas} prenda${fallidas > 1 ? 's' : ''} ya no estaba${fallidas > 1 ? 'n' : ''} disponible${fallidas > 1 ? 's' : ''}:\\n${listaFallidas}`;\n}\n\nreturn [{ json: { remoteJid, mensaje } }];"
       },
       "id": "c1b2c3d4-0005-0005-0005-000000000001",
-      "name": "Formatear Confirmación",
+      "name": "Formatear Confirmación Carrito",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 360]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://manu-evolution-api:8080/message/sendMedia/manu",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            { "name": "number", "value": "={{ $json.remoteJid }}" },
-            { "name": "mediatype", "value": "image" },
-            { "name": "mimetype", "value": "image/jpeg" },
-            { "name": "media", "value": "={{ $json.fotoUrl }}" },
-            { "name": "caption", "value": "={{ $json.caption }}" },
-            { "name": "fileName", "value": "prenda.jpg" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "c1b2c3d4-0006-0006-0006-000000000001",
-      "name": "WhatsApp - Confirmación Reserva",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1780, 360],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "const remoteJid = $('Parsear Mensaje').first().json.remoteJid;\nreturn [{ json: { remoteJid, mensaje: 'Esta prenda ya está reservada o no está disponible. Si crees que es un error, escribinos 😊' } }];"
-      },
-      "id": "c1b2c3d4-0007-0007-0007-000000000001",
-      "name": "Formatear Error Reserva",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1560, 560]
+      "position": [1340, 460]
     },
     {
       "parameters": {
@@ -211,11 +170,12 @@
         },
         "options": {}
       },
-      "id": "c1b2c3d4-0008-0008-0008-000000000001",
-      "name": "WhatsApp - No Disponible",
+      "id": "c1b2c3d4-0006-0006-0006-000000000001",
+      "name": "WhatsApp - Confirmación Carrito",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 560]
+      "position": [1560, 460],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -276,37 +236,31 @@
       "main": [[{ "node": "Parsear Mensaje", "type": "main", "index": 0 }]]
     },
     "Parsear Mensaje": {
-      "main": [[{ "node": "¿Pre-Reservar?", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "¿Agregar al Carrito?", "type": "main", "index": 0 }]]
     },
-    "¿Pre-Reservar?": {
+    "¿Agregar al Carrito?": {
       "main": [
-        [{ "node": "Formatear Pregunta", "type": "main", "index": 0 }],
-        [{ "node": "¿Reservar o Comprobante?", "type": "main", "index": 0 }]
+        [{ "node": "Agregar Al Carrito", "type": "main", "index": 0 }],
+        [{ "node": "¿Confirmar Carrito o Comprobante?", "type": "main", "index": 0 }]
       ]
     },
-    "Formatear Pregunta": {
-      "main": [[{ "node": "WhatsApp - Pregunta Reserva", "type": "main", "index": 0 }]]
+    "Agregar Al Carrito": {
+      "main": [[{ "node": "Formatear Respuesta Carrito", "type": "main", "index": 0 }]]
     },
-    "¿Reservar o Comprobante?": {
+    "Formatear Respuesta Carrito": {
+      "main": [[{ "node": "WhatsApp - Respuesta Carrito", "type": "main", "index": 0 }]]
+    },
+    "¿Confirmar Carrito o Comprobante?": {
       "main": [
-        [{ "node": "Crear Reserva", "type": "main", "index": 0 }],
+        [{ "node": "Confirmar Carrito", "type": "main", "index": 0 }],
         [{ "node": "Guardar Comprobante", "type": "main", "index": 0 }]
       ]
     },
-    "Crear Reserva": {
-      "main": [[{ "node": "¿Reserva OK?", "type": "main", "index": 0 }]]
+    "Confirmar Carrito": {
+      "main": [[{ "node": "Formatear Confirmación Carrito", "type": "main", "index": 0 }]]
     },
-    "¿Reserva OK?": {
-      "main": [
-        [{ "node": "Formatear Confirmación", "type": "main", "index": 0 }],
-        [{ "node": "Formatear Error Reserva", "type": "main", "index": 0 }]
-      ]
-    },
-    "Formatear Confirmación": {
-      "main": [[{ "node": "WhatsApp - Confirmación Reserva", "type": "main", "index": 0 }]]
-    },
-    "Formatear Error Reserva": {
-      "main": [[{ "node": "WhatsApp - No Disponible", "type": "main", "index": 0 }]]
+    "Formatear Confirmación Carrito": {
+      "main": [[{ "node": "WhatsApp - Confirmación Carrito", "type": "main", "index": 0 }]]
     },
     "Guardar Comprobante": {
       "main": [[{ "node": "Formatear Acuse Comprobante", "type": "main", "index": 0 }]]
@@ -320,6 +274,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-03-28T00:00:00.000Z",
-  "versionId": "gabi-bot-reservas-v4"
+  "updatedAt": "2026-04-04T00:00:00.000Z",
+  "versionId": "gabi-bot-reservas-v5"
 }

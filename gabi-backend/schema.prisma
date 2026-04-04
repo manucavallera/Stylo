@@ -164,9 +164,10 @@ model Prenda {
   fardo     Fardo      @relation(fields: [fardoId], references: [id])
   categoria Categoria  @relation(fields: [categoriaId], references: [id])
   talle     Talle      @relation(fields: [talleId], references: [id])
-  fotos     FotoPrenda[]
-  reservas  Reserva[]
-  venta     Venta?
+  fotos       FotoPrenda[]
+  reservas    Reserva[]
+  venta       Venta?
+  carritoBot  CarritoBot[]
 
   @@index([estado])           // búsquedas por disponible/reservado/vendido
   @@index([fardoId])          // ROI por fardo
@@ -332,4 +333,20 @@ model Comprobante {
   venta Venta @relation(fields: [ventaId], references: [id])
 
   @@map("comprobantes")
+}
+
+// ============================================================
+// CARRITO BOT (reservas múltiples desde WhatsApp)
+// ============================================================
+
+model CarritoBot {
+  id               String   @id @default(uuid())
+  telefonoWhatsapp String   @map("telefono_whatsapp")
+  prendaId         String   @map("prenda_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  prenda Prenda @relation(fields: [prendaId], references: [id])
+
+  @@index([telefonoWhatsapp])
+  @@map("carrito_bot")
 }

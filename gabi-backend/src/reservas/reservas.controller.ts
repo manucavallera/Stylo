@@ -56,4 +56,18 @@ export class ReservasController {
     recibirComprobante(@Body() dto: ConfirmarPorBotDto) {
         return this.reservasService.recibirComprobante(dto);
     }
+
+    // POST /api/v1/reservas/agregar-carrito-bot — n8n llama esto cuando el cliente manda una foto
+    @Public()
+    @Post('agregar-carrito-bot')
+    agregarAlCarritoBot(@Body() dto: { telefonoWhatsapp: string; prendaId: string }) {
+        return this.reservasService.agregarAlCarritoBot(dto);
+    }
+
+    // POST /api/v1/reservas/confirmar-carrito-bot — n8n llama esto cuando el cliente responde LISTO
+    @Public()
+    @Post('confirmar-carrito-bot')
+    confirmarCarritoBot(@Body() dto: { telefonoWhatsapp: string; nombreCliente?: string }) {
+        return this.reservasService.confirmarCarritoBot(dto);
+    }
 }

@@ -412,6 +412,112 @@ export class ReservasService {
         return { ok: true };
     }
 
+    // ── Agregar prenda al carrito bot ───────────────────────────
+    async agregarAlCarritoBot(dto: { telefonoWhatsapp: string; prendaId: string }) {
+        // Buscar prenda por código corto
+        const prenda = await this.prisma.prenda.findFirst({
+            where: { id: { startsWith: dto.prendaId }, estado: 'DISPONIBLE' },
+            include: { categoria: true, talle: true },
+        });
+        if (!prenda) {
+            throw new NotFoundException('Esta prenda ya no está disponible 😊');
+        }
+
+        // Verificar que no esté ya en el carrito de este cliente
+        const yaEnCarrito = await this.prisma.carritoBot.findFirst({
+            where: { telefonoWhatsapp: dto.telefonoWhatsapp, prendaId: prenda.id },
+        });
+        if (yaEnCarrito) {
+            // Contar el carrito actual y responder como si la hubiera agregado
+            const total = await this.prisma.carritoBot.count({
+                where: { telefonoWhatsapp: dto.telefonoWhatsapp },
+            });
+            const categoria = prenda.categoria?.nombre ?? '';
+            const talle = prenda.talle?.nombre ?? '';
+            const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
+            return { ok: true, desc, totalEnCarrito: total, yaEstabaEnCarrito: true };
+        }
+
+        await this.prisma.carritoBot.create({
+            data: { telefonoWhatsapp: dto.telefonoWhatsapp, prendaId: prenda.id },
+        });
+
+        const total = await this.prisma.carritoBot.count({
+            where: { telefonoWhatsapp: dto.telefonoWhatsapp },
+        });
+
+        const categoria = prenda.categoria?.nombre ?? '';
+        const talle = prenda.talle?.nombre ?? '';
+        const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
+
+        return { ok: true, desc, totalEnCarrito: total, yaEstabaEnCarrito: false };
+    }
+
+    // ── Confirmar carrito bot (reserva todas las prendas) ────────
+    async confirmarCarritoBot(dto: { telefonoWhatsapp: string; nombreCliente?: string }) {
+        const items = await this.prisma.carritoBot.findMany({
+            where: { telefonoWhatsapp: dto.telefonoWhatsapp },
+            include: { prenda: { include: { categoria: true, talle: true } } },
+        });
+
+        if (items.length === 0) {
+            throw new BadRequestException('No tenés prendas en el carrito. Mandá fotos primero 😊');
+        }
+
+        // Upsert cliente
+        let cliente = await this.prisma.cliente.findFirst({
+            where: { telefonoWhatsapp: dto.telefonoWhatsapp },
+        });
+        if (!cliente) {
+            cliente = await this.prisma.cliente.create({
+                data: {
+                    nombre: dto.nombreCliente || dto.telefonoWhatsapp,
+                    telefonoWhatsapp: dto.telefonoWhatsapp,
+                },
+            });
+        }
+
+        const config = await this.configuracionService.getConfig();
+        const resultados: Array<{ desc: string; ok: boolean; motivo?: string }> = [];
+
+        for (const item of items) {
+            const categoria = item.prenda.categoria?.nombre ?? '';
+            const talle = item.prenda.talle?.nombre ?? '';
+            const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
+            try {
+                await this.create({
+                    prendaId: item.prendaId,
+                    clienteId: cliente.id,
+                    minutosExpiracion: config.minutosReserva,
+                });
+                resultados.push({ desc, ok: true });
+            } catch (err: any) {
+                resultados.push({ desc, ok: false, motivo: err.message ?? 'No disponible' });
+            }
+        }
+
+        // Limpiar carrito
+        await this.prisma.carritoBot.deleteMany({
+            where: { telefonoWhatsapp: dto.telefonoWhatsapp },
+        });
+
+        const reservadas = resultados.filter(r => r.ok);
+        const fallidas = resultados.filter(r => !r.ok);
+
+        // Notificar a Gabi
+        if (reservadas.length > 0) {
+            const lista = reservadas.map(r => `• ${r.desc}`).join('\n');
+            this.notificarGabi(
+                `🛒 *Carrito confirmado (bot)*\n` +
+                `Cliente: ${dto.telefonoWhatsapp}\n` +
+                `Prendas reservadas:\n${lista}\n\n` +
+                `Entrá a Reservas para confirmar cuando paguen.`,
+            );
+        }
+
+        return { reservadas: reservadas.length, fallidas: fallidas.length, detalle: resultados };
+    }
+
     // ── Historial de reservas ────────────────────────────────────
     findHistorial() {
         return this.prisma.reserva.findMany({
