@@ -407,9 +407,116 @@ export class ReservasService {
         }
 
         mensajeGabi += `\n\nEntrá a Reservas para confirmar el pago.`;
-        this.notificarGabi(mensajeGabi);
+
+        // Enviar imagen del comprobante + texto a Gabi
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE;
+        const gabiNumero = process.env.GABI_WHATSAPP;
+        if (evolutionApiUrl && evolutionApiKey && gabiNumero && dto.comprobanteUrl) {
+            const remoteJid = `${gabiNumero}@s.whatsapp.net`;
+            fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                body: JSON.stringify({
+                    number: remoteJid,
+                    mediatype: 'image',
+                    mimetype: 'image/jpeg',
+                    media: dto.comprobanteUrl,
+                    caption: mensajeGabi,
+                    fileName: 'comprobante.jpg',
+                }),
+            }).catch((err) => this.logger.warn(`sendMedia a Gabi falló: ${err.message}`));
+        } else {
+            this.notificarGabi(mensajeGabi);
+        }
 
         return { ok: true };
+    }
+
+    // ── Confirmar múltiples reservas juntas (un solo WA al cliente) ──
+    async confirmarMultiple(ids: string[], comprobanteUrl?: string) {
+        if (!ids.length) throw new BadRequestException('No se enviaron IDs de reservas');
+
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const cajaAbierta = await this.prisma.cajaDiaria.findFirst({
+            where: { fecha: hoy, estado: 'ABIERTA' },
+        });
+
+        const confirmadas: Array<{ desc: string; precio: number }> = [];
+
+        await this.prisma.$transaction(async (tx) => {
+            for (const id of ids) {
+                const reserva = await tx.reserva.findUnique({
+                    where: { id },
+                    include: { prenda: { include: { categoria: true, talle: true } } },
+                });
+                if (!reserva || reserva.estado !== 'ACTIVA') continue;
+
+                await tx.reserva.update({
+                    where: { id },
+                    data: { estado: 'CONFIRMADA', comprobanteUrl: comprobanteUrl ?? undefined },
+                });
+                await tx.prenda.update({
+                    where: { id: reserva.prendaId },
+                    data: { estado: 'VENDIDO' },
+                });
+                await tx.venta.create({
+                    data: {
+                        prendaId: reserva.prendaId,
+                        clienteId: reserva.clienteId ?? undefined,
+                        reservaId: id,
+                        cajaId: cajaAbierta?.id ?? null,
+                        precioFinal: reserva.prenda.precioVenta,
+                        costoHistoricoArs: reserva.prenda.costoUnitario,
+                        metodoPago: 'TRANSFERENCIA',
+                        canalVenta: 'ONLINE',
+                    },
+                });
+                if (cajaAbierta) {
+                    await tx.cajaDiaria.update({
+                        where: { id: cajaAbierta.id },
+                        data: { montoEsperado: { increment: reserva.prenda.precioVenta } },
+                    });
+                }
+
+                const categoria = reserva.prenda.categoria?.nombre ?? '';
+                const talle = reserva.prenda.talle?.nombre ?? '';
+                const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
+                confirmadas.push({ desc, precio: Number(reserva.prenda.precioVenta) });
+            }
+        });
+
+        if (confirmadas.length === 0) throw new BadRequestException('No se pudo confirmar ninguna reserva');
+
+        // Buscar teléfono del cliente para el WA (de la primera reserva)
+        const primeraReserva = await this.prisma.reserva.findUnique({
+            where: { id: ids[0] },
+            include: { cliente: true },
+        });
+        const telefono = primeraReserva?.cliente?.telefonoWhatsapp;
+
+        if (telefono) {
+            const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+            const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+            const evolutionInstance = process.env.EVOLUTION_INSTANCE;
+            if (evolutionApiUrl && evolutionApiKey && evolutionInstance) {
+                const lista = confirmadas.map(c => `• ${c.desc}`).join('\n');
+                const total = confirmadas.reduce((sum, c) => sum + c.precio, 0);
+                const remoteJid = `${telefono}@s.whatsapp.net`;
+                const mensaje = confirmadas.length === 1
+                    ? `✅ ¡Tu compra fue confirmada!\n\nGabi revisó tu comprobante y todo está en orden. ¡Gracias por tu compra! 🛍️`
+                    : `✅ ¡Tus ${confirmadas.length} compras fueron confirmadas!\n\n${lista}\n\n💰 Total: $${total.toLocaleString('es-AR')}\n\nGabi revisó tu comprobante y todo está en orden. ¡Gracias por tu compra! 🛍️`;
+                fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                    body: JSON.stringify({ number: remoteJid, text: mensaje }),
+                }).catch(() => null);
+            }
+        }
+
+        return { confirmadas: confirmadas.length, detalle: confirmadas };
     }
 
     // ── Agregar prenda al carrito bot ───────────────────────────
@@ -520,13 +627,15 @@ export class ReservasService {
         const reservadas = resultados.filter(r => r.ok);
         const fallidas = resultados.filter(r => !r.ok);
 
-        // Notificar a Gabi
+        // Notificar a Gabi con lista y monto total
         if (reservadas.length > 0) {
-            const lista = reservadas.map(r => `• ${r.desc}`).join('\n');
+            const lista = reservadas.map(r => `• ${r.desc} — $${r.precio.toLocaleString('es-AR')}`).join('\n');
+            const total = reservadas.reduce((sum, r) => sum + r.precio, 0);
             this.notificarGabi(
                 `🛒 *Carrito confirmado (bot)*\n` +
                 `Cliente: ${dto.telefonoWhatsapp}\n` +
-                `Prendas reservadas:\n${lista}\n\n` +
+                `Prendas reservadas:\n${lista}\n` +
+                `💰 Total: $${total.toLocaleString('es-AR')}\n\n` +
                 `Entrá a Reservas para confirmar cuando paguen.`,
             );
         }

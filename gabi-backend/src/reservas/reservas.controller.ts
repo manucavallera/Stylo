@@ -57,6 +57,12 @@ export class ReservasController {
         return this.reservasService.recibirComprobante(dto);
     }
 
+    // POST /api/v1/reservas/confirmar-multiple — confirmar varias reservas juntas con un solo WA
+    @Post('confirmar-multiple')
+    confirmarMultiple(@Body() dto: { ids: string[]; comprobanteUrl?: string }) {
+        return this.reservasService.confirmarMultiple(dto.ids, dto.comprobanteUrl);
+    }
+
     // POST /api/v1/reservas/agregar-carrito-bot — n8n llama esto cuando el cliente manda una foto
     @Public()
     @Post('agregar-carrito-bot')
