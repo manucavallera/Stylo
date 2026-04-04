@@ -36,6 +36,21 @@ export class ReservasService {
         }
     }
 
+    private notificarGabi(mensaje: string) {
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE;
+        const gabiNumero = process.env.GABI_WHATSAPP;
+        if (!evolutionApiUrl || !evolutionApiKey || !gabiNumero) return;
+
+        const remoteJid = `${gabiNumero}@s.whatsapp.net`;
+        fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+            body: JSON.stringify({ number: remoteJid, text: mensaje }),
+        }).catch((err) => this.logger.warn(`notificarGabi falló: ${err.message}`));
+    }
+
     // ── Crear reserva ────────────────────────────────────────────
     async create(dto: CreateReservaDto) {
         // Verificar que la prenda existe
@@ -235,7 +250,25 @@ export class ReservasService {
         if (!prenda) throw new NotFoundException('Prenda no encontrada');
 
         const config = await this.configuracionService.getConfig();
-        return this.create({ prendaId: prenda.id, clienteId: cliente.id, minutosExpiracion: config.minutosReserva });
+        const reserva = await this.create({ prendaId: prenda.id, clienteId: cliente.id, minutosExpiracion: config.minutosReserva });
+
+        // Notificar a Gabi que llegó una reserva nueva por el bot
+        const horaExp = reserva.fechaExpiracion.toLocaleTimeString('es-AR', {
+            hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires',
+        });
+        const categoria = reserva.prenda.categoria?.nombre ?? '';
+        const talle = reserva.prenda.talle?.nombre ?? '';
+        const precio = Number(reserva.prenda.precioVenta).toLocaleString('es-AR');
+        this.notificarGabi(
+            `🛍️ *Nueva reserva (bot)*\n` +
+            `Prenda: ${[categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría'}\n` +
+            `Precio: $${precio}\n` +
+            `Cliente: ${dto.telefonoWhatsapp}\n` +
+            `Vence: ${horaExp}hs\n\n` +
+            `Entrá a Reservas para confirmar cuando pague.`,
+        );
+
+        return reserva;
     }
 
     // ── Recibir comprobante desde bot (guarda URL, NO confirma la venta) ──
@@ -255,6 +288,13 @@ export class ReservasService {
             where: { id: reserva.id },
             data: { comprobanteUrl: dto.comprobanteUrl },
         });
+
+        // Notificar a Gabi que llegó un comprobante
+        this.notificarGabi(
+            `📸 *Comprobante recibido*\n` +
+            `Cliente: ${dto.telefonoWhatsapp}\n\n` +
+            `Entrá a Reservas para confirmar el pago.`,
+        );
 
         return { ok: true };
     }
