@@ -183,13 +183,19 @@ export class ReservasService {
 
     // ── Cancelar manualmente ─────────────────────────────────────
     async cancelar(id: string) {
-        const reserva = await this.prisma.reserva.findUnique({ where: { id } });
+        const reserva = await this.prisma.reserva.findUnique({
+            where: { id },
+            include: {
+                cliente: true,
+                prenda: { include: { categoria: true, talle: true } },
+            },
+        });
         if (!reserva) throw new NotFoundException('Reserva no encontrada');
         if (reserva.estado !== 'ACTIVA') {
             throw new BadRequestException(`Solo se pueden cancelar reservas activas (estado actual: ${reserva.estado})`);
         }
 
-        return this.prisma.$transaction(async (tx) => {
+        await this.prisma.$transaction(async (tx) => {
             await tx.reserva.update({
                 where: { id },
                 data: { estado: 'CANCELADA' },
@@ -198,8 +204,30 @@ export class ReservasService {
                 where: { id: reserva.prendaId },
                 data: { estado: 'DISPONIBLE' },
             });
-            return { ok: true };
         });
+
+        // Notificar a la clienta si tiene número de WhatsApp
+        if (reserva.cliente?.telefonoWhatsapp) {
+            const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+            const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+            const evolutionInstance = process.env.EVOLUTION_INSTANCE;
+            if (evolutionApiUrl && evolutionApiKey) {
+                const categoria = reserva.prenda.categoria?.nombre ?? '';
+                const talle = reserva.prenda.talle?.nombre ?? '';
+                const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'tu prenda';
+                const remoteJid = `${reserva.cliente.telefonoWhatsapp}@s.whatsapp.net`;
+                fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                    body: JSON.stringify({
+                        number: remoteJid,
+                        text: `❌ Tu reserva de ${desc} fue cancelada.\n\nSi tenés alguna pregunta, escribinos. 😊`,
+                    }),
+                }).catch(() => null);
+            }
+        }
+
+        return { ok: true };
     }
 
     // ── Expirar reservas vencidas (llamado por cron/n8n) ─────────
