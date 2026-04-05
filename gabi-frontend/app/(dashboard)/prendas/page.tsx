@@ -160,7 +160,7 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
     return (
         <>
         {verQR && <ModalQR prenda={prenda} onClose={() => setVerQR(false)} />}
-        <div className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden hover:border-orange-500/20 transition-all group">
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden hover:border-orange-500/20 transition-all">
             <div className="aspect-square bg-zinc-800 relative overflow-hidden">
                 {prenda.fotos?.[0] ? (
                     <img src={prenda.fotos[0].url} alt="" className="w-full h-full object-cover" />
@@ -170,59 +170,66 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full border text-xs font-bold ${ESTADO_COLORS[prenda.estado]}`}>
                     {prenda.estado}
                 </div>
-                {/* Botones hover */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap p-2">
+            </div>
+
+            <div className="p-3 space-y-2">
+                <div>
+                    <p className="text-white text-sm font-bold">{prenda.categoria?.nombre}</p>
+                    <p className="text-zinc-400 text-xs">Talle {prenda.talle?.nombre}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-orange-400 font-black">${Number(precio).toLocaleString('es-AR')}</span>
+                        {prenda.precioPromocional && (
+                            <span className="text-zinc-600 text-xs line-through">${Number(prenda.precioVenta).toLocaleString('es-AR')}</span>
+                        )}
+                    </div>
+                    {prenda.nota && (
+                        <p className="text-zinc-500 text-xs mt-0.5 truncate italic">{prenda.nota}</p>
+                    )}
+                    {prenda.fardo && (
+                        <p className="text-zinc-600 text-xs mt-0.5 truncate">
+                            {prenda.fardo.nombre ?? 'Fardo'}{prenda.fardo.proveedor?.nombre ? ` · ${prenda.fardo.proveedor.nombre}` : ''}
+                        </p>
+                    )}
+                </div>
+
+                {/* Acciones — siempre visibles */}
+                <div className="flex gap-1 flex-wrap pt-1 border-t border-white/5">
                     {prenda.estado === 'DISPONIBLE' && (
                         <a
                             href={`/pos?prendaId=${prenda.id}`}
-                            className="px-3 py-1.5 bg-emerald-500 text-black text-xs font-black uppercase rounded-lg hover:bg-emerald-400"
+                            className="flex-1 py-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 text-xs font-black uppercase rounded-lg hover:bg-emerald-500/25 text-center transition-colors"
                         >
                             Vender
                         </a>
                     )}
                     <button
                         onClick={onEditar}
-                        className="px-3 py-1.5 bg-orange-500 text-black text-xs font-black uppercase rounded-lg hover:bg-orange-400"
+                        className="flex-1 py-1.5 bg-orange-500/10 text-orange-400 border border-orange-500/20 text-xs font-black uppercase rounded-lg hover:bg-orange-500/20 transition-colors"
                     >
                         Editar
                     </button>
                     <button
                         onClick={() => setVerQR(true)}
-                        className="px-3 py-1.5 bg-zinc-700 text-white text-xs font-black uppercase rounded-lg hover:bg-zinc-600"
+                        className="py-1.5 px-2.5 border border-white/10 text-zinc-500 text-xs font-black uppercase rounded-lg hover:border-white/20 hover:text-zinc-300 transition-colors"
                     >
                         QR
                     </button>
                     {prenda.estado === 'DISPONIBLE' && prenda.fotos?.[0] && (
-                        <button onClick={republicar} disabled={publicando} className="px-3 py-1.5 bg-sky-500/80 text-white text-xs font-black uppercase rounded-lg hover:bg-sky-500 disabled:opacity-50">
+                        <button
+                            onClick={republicar}
+                            disabled={publicando}
+                            className="py-1.5 px-2.5 border border-sky-500/20 text-sky-400 text-xs font-black uppercase rounded-lg hover:bg-sky-500/10 disabled:opacity-40 transition-colors"
+                        >
                             {publicando ? '...' : 'WA'}
                         </button>
                     )}
                     <button
                         onClick={onEliminar}
-                        className="px-3 py-1.5 bg-red-500/80 text-white text-xs font-black uppercase rounded-lg hover:bg-red-500"
+                        className="py-1.5 px-2.5 border border-white/5 text-zinc-700 text-xs font-black uppercase rounded-lg hover:border-red-500/30 hover:text-red-400 transition-colors"
                     >
-                        Borrar
+                        ✕
                     </button>
                 </div>
-            </div>
-
-            <div className="p-3">
-                <p className="text-white text-sm font-bold">{prenda.categoria?.nombre}</p>
-                <p className="text-zinc-400 text-xs">Talle {prenda.talle?.nombre}</p>
-                <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="text-orange-400 font-black">${Number(precio).toLocaleString('es-AR')}</span>
-                    {prenda.precioPromocional && (
-                        <span className="text-zinc-600 text-xs line-through">${Number(prenda.precioVenta).toLocaleString('es-AR')}</span>
-                    )}
-                </div>
-                {prenda.nota && (
-                    <p className="text-zinc-500 text-xs mt-0.5 truncate italic">{prenda.nota}</p>
-                )}
-                {prenda.fardo && (
-                    <p className="text-zinc-600 text-xs mt-0.5 truncate">
-                        {prenda.fardo.nombre ? `${prenda.fardo.nombre}` : 'Fardo'}{prenda.fardo.proveedor?.nombre ? ` · ${prenda.fardo.proveedor.nombre}` : ''}
-                    </p>
-                )}
             </div>
         </div>
         </>
