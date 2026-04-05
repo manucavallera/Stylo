@@ -12,15 +12,38 @@ export class ClientesService {
     }
 
     findAll() {
-        return this.prisma.cliente.findMany({ orderBy: { nombre: 'asc' } });
+        return this.prisma.cliente.findMany({
+            orderBy: { nombre: 'asc' },
+            include: {
+                _count: { select: { ventas: true } },
+                ventas: { select: { precioFinal: true, fechaVenta: true }, orderBy: { fechaVenta: 'desc' }, take: 1 },
+            },
+        });
     }
 
     async findOne(id: string) {
         const cliente = await this.prisma.cliente.findUnique({
             where: { id },
             include: {
-                reservas: { orderBy: { createdAt: 'desc' }, take: 10 },
-                ventas: { orderBy: { fechaVenta: 'desc' }, take: 10 },
+                ventas: {
+                    orderBy: { fechaVenta: 'desc' },
+                    include: {
+                        prenda: {
+                            include: {
+                                categoria: true,
+                                talle: true,
+                                fotos: { orderBy: { orden: 'asc' }, take: 1 },
+                            },
+                        },
+                    },
+                },
+                reservas: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 20,
+                    include: {
+                        prenda: { include: { categoria: true, talle: true } },
+                    },
+                },
             },
         });
         if (!cliente) throw new NotFoundException(`Cliente ${id} no encontrado`);
