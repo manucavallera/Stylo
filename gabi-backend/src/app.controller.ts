@@ -1,4 +1,4 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { AppService } from './app.service';
 import { Public } from './auth/public.decorator';
@@ -10,6 +10,11 @@ export class AppController {
   @Get()
   getHello(): string {
     return this.appService.getHello();
+  }
+
+  @Get('search')
+  search(@Query('q') q: string) {
+    return this.appService.search(q ?? '');
   }
 
   @Public()

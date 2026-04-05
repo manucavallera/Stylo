@@ -9,6 +9,56 @@ export class AppService {
     return 'Hello World!';
   }
 
+  async search(q: string) {
+    const term = q.trim();
+    if (!term || term.length < 2) return { prendas: [], clientes: [], reservas: [] };
+
+    const [prendas, clientes, reservas] = await Promise.all([
+      this.prisma.prenda.findMany({
+        where: {
+          estado: { not: 'RETIRADO' as any },
+          OR: [
+            { categoria: { nombre: { contains: term, mode: 'insensitive' } } },
+            { talle: { nombre: { contains: term, mode: 'insensitive' } } },
+            { nota: { contains: term, mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          categoria: true,
+          talle: true,
+          fotos: { take: 1, orderBy: { orden: 'asc' } },
+        },
+        take: 6,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.cliente.findMany({
+        where: {
+          OR: [
+            { nombre: { contains: term, mode: 'insensitive' } },
+            { telefonoWhatsapp: { contains: term } },
+          ],
+        },
+        take: 4,
+      }),
+      this.prisma.reserva.findMany({
+        where: {
+          estado: 'ACTIVA',
+          OR: [
+            { cliente: { nombre: { contains: term, mode: 'insensitive' } } },
+            { prenda: { categoria: { nombre: { contains: term, mode: 'insensitive' } } } },
+          ],
+        },
+        include: {
+          prenda: { include: { categoria: true, talle: true } },
+          cliente: true,
+        },
+        take: 4,
+      }),
+    ]);
+
+    return { prendas, clientes, reservas };
+  }
+
   async getHealth() {
     const checks: Record<string, { status: string; message?: string }> = {};
     let httpStatus = 200;
