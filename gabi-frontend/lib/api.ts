@@ -46,6 +46,7 @@ export const ventasApi = {
     resumenHoy: () => api.get<ResumenHoy>('/ventas/resumen'),
     hoy: () => api.get<Venta[]>('/ventas/hoy'),
     huerfanas: () => api.get<Venta[]>('/ventas/huerfanas'),
+    balance: (desde: string, hasta: string) => api.get<BalanceResult>(`/ventas/balance?desde=${desde}&hasta=${hasta}`),
     registrar: (data: NuevaVenta) => api.post<Venta>('/ventas', data),
     anular: (id: string) => api.delete<{ ok: boolean }>(`/ventas/${id}`),
 }
@@ -96,7 +97,7 @@ export const cajaApi = {
     cerrar: (id: string, montoReal: number) =>
         api.post<Caja>(`/caja/${id}/cerrar`, { montoReal }),
     historial: () => api.get<Caja[]>('/caja'),
-    registrarGasto: (cajaId: string, data: { concepto: string; monto: number }) =>
+    registrarGasto: (cajaId: string, data: { concepto: string; monto: number; tipo?: 'GASTO' | 'RETIRO' }) =>
         api.post<GastoCaja>(`/caja/${cajaId}/gasto`, data),
 }
 
@@ -160,7 +161,17 @@ export interface Prenda { id: string; qrCode: string; estado: string; precioVent
 export interface Fardo { id: string; nombre?: string; costoTotal: number; moneda: string; tipoCambio?: number; totalPrendas: number; estado: string; fechaCompra: string; proveedor: { nombre: string } }
 export interface Venta { id: string; precioFinal: number; metodoPago: string; canalVenta: string; fechaVenta: string; prenda: Prenda; cliente?: { id: string; nombre: string } | null }
 export interface Reserva { id: string; estado: string; fechaExpiracion: string; createdAt: string; prenda: Prenda; cliente: { id: string; nombre: string; telefonoWhatsapp?: string } | null }
-export interface GastoCaja { id: string; concepto: string; monto: number; createdAt: string }
+export interface GastoCaja { id: string; concepto: string; monto: number; tipo: 'GASTO' | 'RETIRO'; createdAt: string }
+export interface BalanceResult {
+    desde: string
+    hasta: string
+    cantidadVentas: number
+    totalVendido: number
+    totalCosto: number
+    gananciaEstimada: number
+    porMetodoPago: { metodoPago: string; _sum: { precioFinal: number }; _count: number }[]
+    ventas: Venta[]
+}
 export interface Caja { id: string; fecha: string; montoApertura: number; montoEsperado: number; montoReal?: number; diferencia?: number; estado: string; gastos?: GastoCaja[] }
 export interface Cliente { id: string; nombre: string; telefonoWhatsapp?: string; notas?: string }
 export interface ClienteConStats extends Cliente {

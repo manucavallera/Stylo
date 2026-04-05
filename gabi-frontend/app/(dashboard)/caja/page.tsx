@@ -283,15 +283,30 @@ export default function CajaPage() {
 
                         {caja.gastos && caja.gastos.length > 0 && (
                             <div className="border-t border-white/5 pt-3 space-y-2">
-                                <p className="text-zinc-500 text-xs uppercase tracking-widest">Gastos</p>
-                                {caja.gastos.map(g => (
-                                    <div key={g.id} className="flex justify-between text-sm">
-                                        <span className="text-zinc-400">{g.concepto}</span>
-                                        <span className="text-red-400 font-bold">−${Number(g.monto).toLocaleString('es-AR')}</span>
-                                    </div>
-                                ))}
+                                {caja.gastos.filter(g => g.tipo !== 'RETIRO').length > 0 && (
+                                    <>
+                                        <p className="text-zinc-500 text-xs uppercase tracking-widest">Gastos</p>
+                                        {caja.gastos.filter(g => g.tipo !== 'RETIRO').map(g => (
+                                            <div key={g.id} className="flex justify-between text-sm">
+                                                <span className="text-zinc-400">{g.concepto}</span>
+                                                <span className="text-red-400 font-bold">−${Number(g.monto).toLocaleString('es-AR')}</span>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                                {caja.gastos.filter(g => g.tipo === 'RETIRO').length > 0 && (
+                                    <>
+                                        <p className="text-zinc-500 text-xs uppercase tracking-widest mt-2">Retiros</p>
+                                        {caja.gastos.filter(g => g.tipo === 'RETIRO').map(g => (
+                                            <div key={g.id} className="flex justify-between text-sm">
+                                                <span className="text-zinc-400">{g.concepto}</span>
+                                                <span className="text-amber-400 font-bold">−${Number(g.monto).toLocaleString('es-AR')}</span>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
                                 <div className="flex justify-between text-xs pt-1 border-t border-white/5">
-                                    <span className="text-zinc-500 uppercase">Total gastos</span>
+                                    <span className="text-zinc-500 uppercase">Total salidas</span>
                                     <span className="text-red-400 font-black">−${caja.gastos.reduce((a, g) => a + Number(g.monto), 0).toLocaleString('es-AR')}</span>
                                 </div>
                             </div>
@@ -439,6 +454,7 @@ function ModalCerrarCaja({ caja, onClose, onCerrada }: { caja: Caja; onClose: ()
 }
 
 function ModalGasto({ cajaId, onClose, onGuardado }: { cajaId: string; onClose: () => void; onGuardado: () => void }) {
+    const [tipo, setTipo] = useState<'GASTO' | 'RETIRO'>('GASTO')
     const [concepto, setConcepto] = useState('')
     const [monto, setMonto] = useState('')
     const [guardando, setGuardando] = useState(false)
@@ -449,7 +465,7 @@ function ModalGasto({ cajaId, onClose, onGuardado }: { cajaId: string; onClose: 
         setGuardando(true)
         setError('')
         try {
-            await cajaApi.registrarGasto(cajaId, { concepto, monto: Number(monto) })
+            await cajaApi.registrarGasto(cajaId, { concepto, monto: Number(monto), tipo })
             onGuardado()
         } catch (e: any) {
             setError(e.message)
@@ -462,13 +478,28 @@ function ModalGasto({ cajaId, onClose, onGuardado }: { cajaId: string; onClose: 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
             <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-5 border-b border-white/5">
-                    <h2 className="text-white font-black uppercase text-sm">Registrar Gasto</h2>
+                    <h2 className="text-white font-black uppercase text-sm">Salida de caja</h2>
                     <button onClick={onClose} className="text-zinc-500 hover:text-white text-xl leading-none">✕</button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setTipo('GASTO')}
+                            className={`py-2.5 rounded-xl text-sm font-black uppercase border transition-all ${tipo === 'GASTO' ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'border-white/10 text-zinc-500 hover:border-white/20'}`}>
+                            Gasto
+                        </button>
+                        <button type="button" onClick={() => setTipo('RETIRO')}
+                            className={`py-2.5 rounded-xl text-sm font-black uppercase border transition-all ${tipo === 'RETIRO' ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'border-white/10 text-zinc-500 hover:border-white/20'}`}>
+                            Retiro
+                        </button>
+                    </div>
+                    <p className="text-zinc-600 text-xs">
+                        {tipo === 'GASTO' ? 'Gasto del negocio (limpieza, insumos, etc.)' : 'Retiro de Gabi — no es gasto del negocio'}
+                    </p>
                     <div>
                         <label className="label">Concepto</label>
-                        <input className="input" type="text" placeholder="Ej: cambio, limpieza, insumos..." value={concepto} onChange={e => setConcepto(e.target.value)} required autoFocus />
+                        <input className="input" type="text"
+                            placeholder={tipo === 'GASTO' ? 'Ej: limpieza, bolsas...' : 'Ej: retiro personal'}
+                            value={concepto} onChange={e => setConcepto(e.target.value)} required autoFocus />
                     </div>
                     <div>
                         <label className="label">Monto</label>
