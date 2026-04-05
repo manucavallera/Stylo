@@ -24,19 +24,31 @@ export class PrendasService {
         return { disponibles, reservadas, sinFoto };
     }
 
-    // ── Listar prendas con filtros opcionales ────────────────────
+    // ── Listar prendas con filtros, búsqueda y paginación ────────
     findAll(filters?: {
         estado?: string;
         categoriaId?: string;
         talleId?: string;
         fardoId?: string;
+        search?: string;
+        skip?: number;
+        take?: number;
     }) {
+        const searchConditions = filters?.search ? {
+            OR: [
+                { categoria: { nombre: { contains: filters.search, mode: 'insensitive' as const } } },
+                { talle: { nombre: { contains: filters.search, mode: 'insensitive' as const } } },
+                { nota: { contains: filters.search, mode: 'insensitive' as const } },
+            ],
+        } : undefined;
+
         return this.prisma.prenda.findMany({
             where: {
                 ...(filters?.estado && { estado: filters.estado as any }),
                 ...(filters?.categoriaId && { categoriaId: filters.categoriaId }),
                 ...(filters?.talleId && { talleId: filters.talleId }),
                 ...(filters?.fardoId && { fardoId: filters.fardoId }),
+                ...searchConditions,
             },
             include: {
                 categoria: true,
@@ -45,6 +57,8 @@ export class PrendasService {
                 fardo: { select: { id: true, nombre: true, fechaCompra: true, moneda: true, proveedor: { select: { nombre: true } } } },
             },
             orderBy: { createdAt: 'desc' },
+            ...(filters?.skip !== undefined && { skip: filters.skip }),
+            ...(filters?.take !== undefined && { take: filters.take }),
         });
     }
 

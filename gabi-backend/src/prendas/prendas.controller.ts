@@ -7,15 +7,22 @@ import { Public } from '../auth/public.decorator';
 export class PrendasController {
     constructor(private readonly prendasService: PrendasService) { }
 
-    // GET /api/v1/prendas?estado=DISPONIBLE&categoriaId=...&talleId=...
+    // GET /api/v1/prendas?estado=DISPONIBLE&search=remera&skip=0&take=40
     @Get()
     findAll(
         @Query('estado') estado?: string,
         @Query('categoriaId') categoriaId?: string,
         @Query('talleId') talleId?: string,
         @Query('fardoId') fardoId?: string,
+        @Query('search') search?: string,
+        @Query('skip') skip?: string,
+        @Query('take') take?: string,
     ) {
-        return this.prendasService.findAll({ estado, categoriaId, talleId, fardoId });
+        return this.prendasService.findAll({
+            estado, categoriaId, talleId, fardoId, search,
+            skip: skip ? parseInt(skip) : undefined,
+            take: take ? parseInt(take) : undefined,
+        });
     }
 
     // GET /api/v1/prendas/stats — contadores rápidos para el dashboard
