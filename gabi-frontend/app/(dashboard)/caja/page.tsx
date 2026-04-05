@@ -189,36 +189,7 @@ export default function CajaPage() {
 
             {/* ── Ventas sin caja de días anteriores ── */}
             {huerfanas.length > 0 && (
-                <div className="space-y-3">
-                    <h2 className="text-amber-400 text-xs uppercase tracking-widest font-black">
-                        ⚠ Ventas sin caja — días anteriores
-                    </h2>
-                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 space-y-2">
-                        <p className="text-amber-400/80 text-xs mb-3">
-                            {huerfanas.length} venta{huerfanas.length !== 1 ? 's' : ''} registrada{huerfanas.length !== 1 ? 's' : ''} sin caja abierta. No afectan la caja actual.
-                        </p>
-                        {huerfanas.map(v => (
-                            <div key={v.id} className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-base shrink-0">👕</span>
-                                    <div className="min-w-0">
-                                        <p className="text-zinc-300 text-sm font-bold truncate">{v.prenda.categoria?.nombre}</p>
-                                        <p className="text-zinc-500 text-xs">
-                                            {new Date(v.fechaVenta).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })} · {METODO_LABEL[v.metodoPago]}
-                                        </p>
-                                    </div>
-                                </div>
-                                <p className="text-amber-400 font-black text-sm shrink-0">${Number(v.precioFinal).toLocaleString('es-AR')}</p>
-                            </div>
-                        ))}
-                        <div className="pt-2 border-t border-amber-500/20 flex justify-between">
-                            <span className="text-amber-400/60 text-xs uppercase tracking-wide">Total</span>
-                            <span className="text-amber-400 font-black text-sm">
-                                ${huerfanas.reduce((s, v) => s + Number(v.precioFinal), 0).toLocaleString('es-AR')}
-                            </span>
-                        </div>
-                    </div>
-                </div>
+                <VentasHuerfanas huerfanas={huerfanas} metodoLabel={METODO_LABEL} />
             )}
 
             {/* ── Control de efectivo ── */}
@@ -353,6 +324,52 @@ export default function CajaPage() {
             {modalGasto && caja && (
                 <ModalGasto cajaId={caja.id} onClose={() => setModalGasto(false)} onGuardado={() => { setModalGasto(false); toast('Salida registrada'); cargar() }} />
             )}
+        </div>
+    )
+}
+
+function VentasHuerfanas({ huerfanas, metodoLabel }: { huerfanas: Venta[]; metodoLabel: Record<string, string> }) {
+    const [expandido, setExpandido] = useState(false)
+    const LIMITE = 20
+    const visibles = expandido ? huerfanas : huerfanas.slice(0, LIMITE)
+    const total = huerfanas.reduce((s, v) => s + Number(v.precioFinal), 0)
+
+    return (
+        <div className="space-y-3">
+            <h2 className="text-amber-400 text-xs uppercase tracking-widest font-black">
+                ⚠ Ventas sin caja — días anteriores
+            </h2>
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 space-y-2">
+                <p className="text-amber-400/80 text-xs mb-3">
+                    {huerfanas.length} venta{huerfanas.length !== 1 ? 's' : ''} registrada{huerfanas.length !== 1 ? 's' : ''} sin caja abierta. No afectan la caja actual.
+                </p>
+                {visibles.map(v => (
+                    <div key={v.id} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-base shrink-0">👕</span>
+                            <div className="min-w-0">
+                                <p className="text-zinc-300 text-sm font-bold truncate">{v.prenda.categoria?.nombre}</p>
+                                <p className="text-zinc-500 text-xs">
+                                    {new Date(v.fechaVenta).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })} · {metodoLabel[v.metodoPago]}
+                                </p>
+                            </div>
+                        </div>
+                        <p className="text-amber-400 font-black text-sm shrink-0">${Number(v.precioFinal).toLocaleString('es-AR')}</p>
+                    </div>
+                ))}
+                {huerfanas.length > LIMITE && (
+                    <button
+                        onClick={() => setExpandido(e => !e)}
+                        className="w-full text-center text-amber-500/60 text-xs font-bold uppercase py-1 hover:text-amber-400 transition-colors"
+                    >
+                        {expandido ? '▲ Mostrar menos' : `▼ Ver todas (${huerfanas.length - LIMITE} más)`}
+                    </button>
+                )}
+                <div className="pt-2 border-t border-amber-500/20 flex justify-between">
+                    <span className="text-amber-400/60 text-xs uppercase tracking-wide">Total</span>
+                    <span className="text-amber-400 font-black text-sm">${total.toLocaleString('es-AR')}</span>
+                </div>
+            </div>
         </div>
     )
 }

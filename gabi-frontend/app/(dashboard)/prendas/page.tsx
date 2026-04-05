@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { prendasApi, fardosApi, type Prenda } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 
@@ -18,24 +18,53 @@ export default function PrendasPage() {
     return <Suspense fallback={<div className="space-y-4">{[...Array(8)].map((_, i) => <div key={i} className="h-16 bg-zinc-900 rounded-2xl animate-pulse" />)}</div>}><PrendasInner /></Suspense>
 }
 
+const TAKE = 40
+
 function PrendasInner() {
     const searchParams = useSearchParams()
+    const router = useRouter()
     const fardoId = searchParams.get('fardoId') ?? undefined
+    const estadoUrl = searchParams.get('estado')
 
     const [prendas, setPrendas] = useState<Prenda[]>([])
     const [loading, setLoading] = useState(true)
-    const [filtroEstado, setFiltroEstado] = useState(fardoId ? '' : 'DISPONIBLE')
+    const [loadingMas, setLoadingMas] = useState(false)
+    const [hasMore, setHasMore] = useState(false)
+    const [filtroEstado, setFiltroEstado] = useState(estadoUrl ?? (fardoId ? '' : 'DISPONIBLE'))
     const [editando, setEditando] = useState<Prenda | null>(null)
+    const skipRef = useRef(0)
 
-    async function cargar() {
-        setLoading(true)
-        const params: Record<string, string> = {}
+    async function cargar(reset = true) {
+        const currentSkip = reset ? 0 : skipRef.current
+        if (reset) setLoading(true)
+        else setLoadingMas(true)
+
+        const params: Record<string, string> = { take: String(TAKE), skip: String(currentSkip) }
         if (filtroEstado) params.estado = filtroEstado
         if (fardoId) params.fardoId = fardoId
-        prendasApi.listar(params).then(setPrendas).finally(() => setLoading(false))
+
+        try {
+            const result = await prendasApi.listar(params)
+            if (reset) setPrendas(result)
+            else setPrendas(p => [...p, ...result])
+            skipRef.current = currentSkip + result.length
+            setHasMore(result.length === TAKE)
+        } finally {
+            setLoading(false)
+            setLoadingMas(false)
+        }
     }
 
-    useEffect(() => { cargar() }, [filtroEstado, fardoId])
+    function cambiarEstado(e: string) {
+        setFiltroEstado(e)
+        skipRef.current = 0
+        const params = new URLSearchParams()
+        if (fardoId) params.set('fardoId', fardoId)
+        if (e) params.set('estado', e)
+        router.replace(`/prendas?${params.toString()}`, { scroll: false })
+    }
+
+    useEffect(() => { cargar(true) }, [filtroEstado, fardoId])
 
     async function handleEliminar(id: string) {
         if (!confirm('¿Eliminar esta prenda? Esta acción no se puede deshacer.')) return
@@ -67,7 +96,7 @@ function PrendasInner() {
                 {ESTADOS.map(e => (
                     <button
                         key={e}
-                        onClick={() => setFiltroEstado(e)}
+                        onClick={() => cambiarEstado(e)}
                         className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-all ${filtroEstado === e
                             ? (ESTADO_COLORS[e] || 'bg-white/10 text-white border-white/20')
                             : 'border-white/10 text-zinc-400 hover:border-white/20 hover:text-white'
@@ -89,15 +118,28 @@ function PrendasInner() {
                     No hay prendas{filtroEstado ? ` en estado ${filtroEstado}` : ''}
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {prendas.map(prenda => (
-                        <PrendaCard
-                            key={prenda.id}
-                            prenda={prenda}
-                            onEditar={() => setEditando(prenda)}
-                            onEliminar={() => handleEliminar(prenda.id)}
-                        />
-                    ))}
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {prendas.map(prenda => (
+                            <PrendaCard
+                                key={prenda.id}
+                                prenda={prenda}
+                                onEditar={() => setEditando(prenda)}
+                                onEliminar={() => handleEliminar(prenda.id)}
+                            />
+                        ))}
+                    </div>
+                    {hasMore && (
+                        <div className="text-center pt-2">
+                            <button
+                                onClick={() => cargar(false)}
+                                disabled={loadingMas}
+                                className="px-6 py-2.5 border border-white/10 text-zinc-400 text-sm font-bold uppercase rounded-xl hover:border-white/20 hover:text-white transition-all disabled:opacity-50"
+                            >
+                                {loadingMas ? 'Cargando...' : `Cargar más (${prendas.length} mostradas)`}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 

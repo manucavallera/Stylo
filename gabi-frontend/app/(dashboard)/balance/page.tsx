@@ -277,30 +277,7 @@ export default function BalancePage() {
                             </div>
 
                             {verVentas && (
-                                <div className="space-y-2">
-                                    {balance.ventas.map(v => (
-                                        <div key={v.id} className="flex items-center gap-3 bg-zinc-900 border border-white/5 rounded-xl px-3 py-2.5">
-                                            {v.prenda?.fotos?.[0] ? (
-                                                <img src={v.prenda.fotos[0].url} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                                            ) : (
-                                                <span className="text-lg w-9 text-center shrink-0">👕</span>
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-white text-sm font-bold truncate">{v.prenda?.categoria?.nombre}</p>
-                                                <p className="text-zinc-500 text-xs">
-                                                    Talle {v.prenda?.talle?.nombre}
-                                                    {v.cliente && <span> · {v.cliente.nombre}</span>}
-                                                </p>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <p className="text-white font-black text-sm">${Number(v.precioFinal).toLocaleString('es-AR')}</p>
-                                                <p className="text-zinc-500 text-xs">
-                                                    {METODO_ICON[v.metodoPago]} {new Date(v.fechaVenta).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <VentasList ventas={balance.ventas} metodoIcon={METODO_ICON} />
                             )}
                         </div>
                     )}
@@ -316,6 +293,47 @@ export default function BalancePage() {
                         </div>
                     )}
                 </>
+            )}
+        </div>
+    )
+}
+
+function VentasList({ ventas, metodoIcon }: { ventas: any[]; metodoIcon: Record<string, string> }) {
+    const LIMITE = 30
+    const [verTodas, setVerTodas] = useState(false)
+    const visibles = verTodas ? ventas : ventas.slice(0, LIMITE)
+
+    return (
+        <div className="space-y-2">
+            {visibles.map((v: any) => (
+                <div key={v.id} className="flex items-center gap-3 bg-zinc-900 border border-white/5 rounded-xl px-3 py-2.5">
+                    {v.prenda?.fotos?.[0] ? (
+                        <img src={v.prenda.fotos[0].url} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                    ) : (
+                        <span className="text-lg w-9 text-center shrink-0">👕</span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-bold truncate">{v.prenda?.categoria?.nombre}</p>
+                        <p className="text-zinc-500 text-xs">
+                            Talle {v.prenda?.talle?.nombre}
+                            {v.cliente && <span> · {v.cliente.nombre}</span>}
+                        </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <p className="text-white font-black text-sm">${Number(v.precioFinal).toLocaleString('es-AR')}</p>
+                        <p className="text-zinc-500 text-xs">
+                            {metodoIcon[v.metodoPago]} {new Date(v.fechaVenta).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
+                        </p>
+                    </div>
+                </div>
+            ))}
+            {ventas.length > LIMITE && (
+                <button
+                    onClick={() => setVerTodas(t => !t)}
+                    className="w-full text-center text-zinc-600 text-xs font-bold uppercase py-2 hover:text-zinc-400 transition-colors"
+                >
+                    {verTodas ? '▲ Mostrar menos' : `▼ Ver todas (${ventas.length - LIMITE} más)`}
+                </button>
             )}
         </div>
     )
