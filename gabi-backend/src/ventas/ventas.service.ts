@@ -161,4 +161,46 @@ export class VentasService {
             include: { prenda: true, cliente: true, comprobante: true },
         });
     }
+
+    // ── Ventas sin caja (huérfanas) ──────────────────────────────
+    huerfanas() {
+        return this.prisma.venta.findMany({
+            where: { cajaId: null },
+            include: {
+                prenda: { include: { categoria: true, talle: true } },
+                cliente: true,
+            },
+            orderBy: { fechaVenta: 'desc' },
+        });
+    }
+
+    // ── Anular venta ─────────────────────────────────────────────
+    async anular(id: string) {
+        const venta = await this.prisma.venta.findUnique({ where: { id } });
+        if (!venta) throw new NotFoundException('Venta no encontrada');
+
+        return this.prisma.$transaction(async (tx) => {
+            await tx.prenda.update({
+                where: { id: venta.prendaId },
+                data: { estado: 'DISPONIBLE' },
+            });
+
+            if (venta.cajaId) {
+                await tx.cajaDiaria.update({
+                    where: { id: venta.cajaId },
+                    data: { montoEsperado: { decrement: venta.precioFinal } },
+                });
+            }
+
+            if (venta.reservaId) {
+                await tx.reserva.update({
+                    where: { id: venta.reservaId },
+                    data: { estado: 'CANCELADA' },
+                });
+            }
+
+            await tx.venta.delete({ where: { id } });
+            return { ok: true };
+        });
+    }
 }
