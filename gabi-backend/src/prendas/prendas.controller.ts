@@ -18,6 +18,12 @@ export class PrendasController {
         return this.prendasService.findAll({ estado, categoriaId, talleId, fardoId });
     }
 
+    // GET /api/v1/prendas/stats — contadores rápidos para el dashboard
+    @Get('stats')
+    stats() {
+        return this.prendasService.stats();
+    }
+
     // GET /api/v1/prendas/clavos?dias=30
     @Get('clavos')
     findClavos(@Query('dias') dias?: string) {

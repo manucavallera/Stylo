@@ -14,6 +14,16 @@ export class PrendasService {
         private readonly gruposService: GruposWhatsappService,
     ) { }
 
+    // ── Stats rápidas para el dashboard ─────────────────────────
+    async stats() {
+        const [disponibles, reservadas, sinFoto] = await Promise.all([
+            this.prisma.prenda.count({ where: { estado: 'DISPONIBLE' } }),
+            this.prisma.prenda.count({ where: { estado: 'RESERVADO' } }),
+            this.prisma.prenda.count({ where: { estado: 'DISPONIBLE', fotos: { none: {} } } }),
+        ]);
+        return { disponibles, reservadas, sinFoto };
+    }
+
     // ── Listar prendas con filtros opcionales ────────────────────
     findAll(filters?: {
         estado?: string;
