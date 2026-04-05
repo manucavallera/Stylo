@@ -306,7 +306,14 @@ export default function BalancePage() {
                     )}
 
                     {balance.cantidadVentas === 0 && (
-                        <div className="text-center py-12 text-zinc-600">Sin ventas en este período</div>
+                        <div className="text-center py-16 space-y-3">
+                            <div className="text-4xl">📭</div>
+                            <p className="text-white font-bold">Sin ventas en este período</p>
+                            <p className="text-zinc-600 text-sm">Seleccioná otro rango de fechas o registrá ventas desde el POS</p>
+                            <a href="/pos" className="inline-block mt-1 px-5 py-2.5 bg-orange-500 text-black font-black text-sm uppercase rounded-xl hover:bg-orange-400 transition-colors">
+                                Ir al POS →
+                            </a>
+                        </div>
                     )}
                 </>
             )}

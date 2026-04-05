@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { cajaApi, ventasApi, type Caja, type GastoCaja, type Venta, type ResumenHoy } from '@/lib/api'
+import { toast } from '@/components/Toast'
 
 const METODO_LABEL: Record<string, string> = {
     EFECTIVO: 'Efectivo',
@@ -68,9 +69,10 @@ export default function CajaPage() {
         try {
             await ventasApi.anular(id)
             setConfirmAnular(null)
+            toast('Venta anulada', 'warning')
             cargar()
         } catch (e: any) {
-            alert(e.message || 'Error al anular')
+            toast(e.message || 'Error al anular', 'error')
         } finally {
             setAnulando(null)
         }
@@ -343,13 +345,13 @@ export default function CajaPage() {
             )}
 
             {modalAbrir && (
-                <ModalAbrirCaja onClose={() => setModalAbrir(false)} onAbierta={() => { setModalAbrir(false); cargar() }} />
+                <ModalAbrirCaja onClose={() => setModalAbrir(false)} onAbierta={() => { setModalAbrir(false); toast('Caja abierta'); cargar() }} />
             )}
             {modalCerrar && caja && (
-                <ModalCerrarCaja caja={caja} onClose={() => setModalCerrar(false)} onCerrada={() => { setModalCerrar(false); cargar() }} />
+                <ModalCerrarCaja caja={caja} onClose={() => setModalCerrar(false)} onCerrada={() => { setModalCerrar(false); toast('Caja cerrada correctamente'); cargar() }} />
             )}
             {modalGasto && caja && (
-                <ModalGasto cajaId={caja.id} onClose={() => setModalGasto(false)} onGuardado={() => { setModalGasto(false); cargar() }} />
+                <ModalGasto cajaId={caja.id} onClose={() => setModalGasto(false)} onGuardado={() => { setModalGasto(false); toast('Salida registrada'); cargar() }} />
             )}
         </div>
     )

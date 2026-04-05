@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { reservasApi, prendasApi, clientesApi, type Reserva, type Prenda, type Cliente } from '@/lib/api'
 import { ClientePicker } from '@/components/ClientePicker'
+import { toast } from '@/components/Toast'
 
 function useTiempoRestante(fechaExpiracion: string) {
     const [texto, setTexto] = useState('')
@@ -65,9 +66,11 @@ export default function ReservasPage() {
         setError('')
         try {
             await reservasApi.confirmar(id)
+            toast('Reserva confirmada — venta registrada')
             await cargar()
         } catch (e: any) {
             setError(e.message)
+            toast(e.message || 'Error al confirmar', 'error')
         } finally {
             setAccionando(null)
         }
@@ -78,9 +81,11 @@ export default function ReservasPage() {
         setError('')
         try {
             await reservasApi.confirmarMultiple(ids)
+            toast(`${ids.length} reservas confirmadas`)
             await cargar()
         } catch (e: any) {
             setError(e.message)
+            toast(e.message || 'Error al confirmar', 'error')
         } finally {
             setAccionando(null)
         }
@@ -92,9 +97,11 @@ export default function ReservasPage() {
         setError('')
         try {
             await reservasApi.cancelar(id)
+            toast('Reserva cancelada', 'warning')
             await cargar()
         } catch (e: any) {
             setError(e.message)
+            toast(e.message || 'Error al cancelar', 'error')
         } finally {
             setAccionando(null)
         }

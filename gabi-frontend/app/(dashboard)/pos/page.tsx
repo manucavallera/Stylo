@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { prendasApi, ventasApi, cajaApi, clientesApi, type Prenda, type Caja, type Cliente } from '@/lib/api'
 import { ClientePicker } from '@/components/ClientePicker'
+import { toast } from '@/components/Toast'
 
 const METODOS_PAGO = ['EFECTIVO', 'MERCADOPAGO', 'TRANSFERENCIA']
 
@@ -97,6 +98,7 @@ function PosInner() {
                 cajaId: caja?.estado === 'ABIERTA' ? caja.id : undefined,
                 clienteId: cliente?.id,
             })
+            toast(`Venta registrada — $${Number(precioFinal).toLocaleString('es-AR')}`)
             setVentaTicket({ prenda, precioFinal: Number(precioFinal), metodoPago, cliente, fecha: new Date() })
             setPrenda(null)
             setQrInput('')
@@ -116,9 +118,22 @@ function PosInner() {
                 <h1 className="text-2xl font-black text-white uppercase">Punto de Venta</h1>
                 {caja?.estado === 'ABIERTA'
                     ? <p className="text-emerald-400 text-xs uppercase tracking-widest mt-0.5">✓ Caja abierta</p>
-                    : <p className="text-amber-400 text-xs uppercase tracking-widest mt-0.5">⚠ Sin caja abierta hoy</p>
+                    : <p className="text-zinc-600 text-xs uppercase tracking-widest mt-0.5">Sin caja abierta</p>
                 }
             </div>
+
+            {caja?.estado !== 'ABIERTA' && (
+                <a href="/caja" className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3.5 hover:bg-amber-500/15 transition-colors group">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl shrink-0">⚠️</span>
+                        <div>
+                            <p className="text-amber-300 text-sm font-bold">No hay caja abierta hoy</p>
+                            <p className="text-amber-600 text-xs mt-0.5">Las ventas van a quedar sin asignar a una caja</p>
+                        </div>
+                    </div>
+                    <span className="text-amber-400 text-xs font-black uppercase shrink-0 group-hover:translate-x-0.5 transition-transform">Abrir →</span>
+                </a>
+            )}
 
             {/* Tabs modo — solo si no hay prenda pre-cargada desde prendas */}
             {!prendaIdParam && (

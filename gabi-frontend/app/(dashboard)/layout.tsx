@@ -5,15 +5,16 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { GlobalSearch } from '@/components/GlobalSearch'
+import { ToastProvider } from '@/components/Toast'
 
 const navItems = [
     { href: '/dashboard', icon: '📊', label: 'Dashboard' },
     { href: '/fardos', icon: '📦', label: 'Fardos' },
     { href: '/prendas', icon: '👕', label: 'Prendas' },
     { href: '/reservas', icon: '🔒', label: 'Reservas' },
-    { href: '/pos', icon: '🛒', label: 'POS' },
-    { href: '/caja', icon: '💰', label: 'Caja' },
-    { href: '/balance', icon: '📊', label: 'Balance' },
+    { href: '/pos', icon: '🛒', label: 'POS', desc: 'Registrar venta' },
+    { href: '/caja', icon: '💰', label: 'Caja', desc: 'Efectivo del día' },
+    { href: '/balance', icon: '📈', label: 'Balance', desc: 'Resultados por período' },
     { href: '/clientes', icon: '👤', label: 'Clientes' },
     { href: '/configuracion', icon: '⚙️', label: 'Config' },
 ]
@@ -37,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     return (
+    <ToastProvider>
         <div className="min-h-screen bg-black">
             {/* Header mobile */}
             <header className="md:hidden fixed top-0 left-0 right-0 z-20 bg-zinc-950 border-b border-white/5 flex items-center justify-between px-4 h-14">
@@ -100,8 +102,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     : 'text-zinc-500 hover:text-white hover:bg-white/5'
                                 }`}
                             >
-                                <span className="text-base">{item.icon}</span>
-                                {item.label}
+                                <span className="text-base shrink-0">{item.icon}</span>
+                                <div className="min-w-0">
+                                    <div>{item.label}</div>
+                                    {(item as any).desc && (
+                                        <div className={`text-[10px] font-normal normal-case tracking-normal leading-none mt-0.5 ${isActive ? 'text-black/60' : 'text-zinc-600'}`}>
+                                            {(item as any).desc}
+                                        </div>
+                                    )}
+                                </div>
                             </Link>
                         )
                     })}
@@ -132,5 +141,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {children}
             </main>
         </div>
+    </ToastProvider>
     )
 }

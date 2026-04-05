@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { fardosApi, prendasApi, proveedoresApi, categoriasApi, tallesApi, type Fardo, type Prenda, type Proveedor, type CategoriaOTalle } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from '@/components/Toast'
 
 const ESTADO_COLORS: Record<string, string> = {
     PENDIENTE_APERTURA: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -31,16 +32,18 @@ export default function FardosPage() {
         if (!confirm(`¿Cerrar el fardo "${fardo.nombre ?? fardo.proveedor?.nombre}"? Las prendas disponibles quedarán como retiradas.`)) return
         try {
             await fardosApi.cerrar(fardo.id)
+            toast('Fardo cerrado correctamente')
             cargar()
-        } catch (e: any) { alert(e.message) }
+        } catch (e: any) { toast(e.message || 'Error al cerrar el fardo', 'error') }
     }
 
     async function handleEliminar(fardo: Fardo) {
         if (!confirm(`¿Eliminar el fardo "${fardo.nombre ?? fardo.proveedor?.nombre}"?`)) return
         try {
             await fardosApi.eliminar(fardo.id)
+            toast('Fardo eliminado')
             cargar()
-        } catch (e: any) { alert(e.message) }
+        } catch (e: any) { toast(e.message || 'Error al eliminar', 'error') }
     }
 
     useEffect(() => { cargar() }, [])
@@ -65,7 +68,19 @@ export default function FardosPage() {
                     {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-zinc-900 rounded-2xl animate-pulse" />)}
                 </div>
             ) : fardos.length === 0 ? (
-                <div className="text-center py-20 text-zinc-500">No hay fardos activos</div>
+                <div className="text-center py-20 space-y-4">
+                    <div className="text-5xl">📦</div>
+                    <div>
+                        <p className="text-white font-bold text-lg">No tenés fardos todavía</p>
+                        <p className="text-zinc-500 text-sm mt-1 max-w-xs mx-auto">Creá un fardo para empezar a registrar prendas en el inventario</p>
+                    </div>
+                    <button
+                        onClick={() => setModalNuevo(true)}
+                        className="px-5 py-2.5 bg-orange-500 text-black font-black text-sm uppercase rounded-xl hover:bg-orange-400 transition-colors"
+                    >
+                        + Crear primer fardo
+                    </button>
+                </div>
             ) : (
                 <div className="space-y-3">
                     {fardos.map(f => (
