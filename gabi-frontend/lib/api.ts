@@ -101,9 +101,13 @@ export const cajaApi = {
 }
 
 export const clientesApi = {
-    listar: () => api.get<Cliente[]>('/clientes'),
+    listar: () => api.get<ClienteConStats[]>('/clientes'),
+    uno: (id: string) => api.get<ClienteDetalle>(`/clientes/${id}`),
     crear: (data: { nombre: string; telefonoWhatsapp?: string; notas?: string }) =>
         api.post<Cliente>('/clientes', data),
+    actualizar: (id: string, data: { nombre: string; telefonoWhatsapp?: string; notas?: string }) =>
+        api.put<Cliente>(`/clientes/${id}`, data),
+    eliminar: (id: string) => api.delete(`/clientes/${id}`),
 }
 
 export const gruposWaApi = {
@@ -148,7 +152,15 @@ export interface Venta { id: string; precioFinal: number; metodoPago: string; ca
 export interface Reserva { id: string; estado: string; fechaExpiracion: string; createdAt: string; prenda: Prenda; cliente: { id: string; nombre: string; telefonoWhatsapp?: string } | null }
 export interface GastoCaja { id: string; concepto: string; monto: number; createdAt: string }
 export interface Caja { id: string; fecha: string; montoApertura: number; montoEsperado: number; montoReal?: number; diferencia?: number; estado: string; gastos?: GastoCaja[] }
-export interface Cliente { id: string; nombre: string; telefonoWhatsapp?: string }
+export interface Cliente { id: string; nombre: string; telefonoWhatsapp?: string; notas?: string }
+export interface ClienteConStats extends Cliente {
+    _count: { ventas: number }
+    ventas: { precioFinal: number; fechaVenta: string }[]
+}
+export interface ClienteDetalle extends Cliente {
+    ventas: (Venta & { prenda: Prenda })[]
+    reservas: { id: string; estado: string; createdAt: string; prenda: { categoria: { nombre: string }; talle: { nombre: string } } }[]
+}
 export interface NuevaVenta { prendaId: string; metodoPago: string; canalVenta: string; precioFinal: number; cajaId?: string; clienteId?: string; reservaId?: string }
 export interface NuevoFardo { nombre?: string; proveedorId: string; fechaCompra: string; costoTotal: number; moneda: string; tipoCambio?: number; pesoKg?: number }
 export interface AbrirFardo { items: { categoriaId: string; talleId: string; cantidad: number; precioVenta: number; tieneFalla?: boolean }[] }

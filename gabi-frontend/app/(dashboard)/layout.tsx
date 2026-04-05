@@ -12,6 +12,7 @@ const navItems = [
     { href: '/reservas', icon: '🔒', label: 'Reservas' },
     { href: '/pos', icon: '🛒', label: 'POS' },
     { href: '/caja', icon: '💰', label: 'Caja' },
+    { href: '/clientes', icon: '👤', label: 'Clientes' },
     { href: '/configuracion', icon: '⚙️', label: 'Config' },
 ]
 
