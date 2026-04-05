@@ -129,7 +129,7 @@ export default function BalancePage() {
                             onClick={() => setPeriodo(p)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase border transition-all ${periodo === p ? 'bg-orange-500 border-orange-500 text-black' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
                         >
-                            {labelPeriodo && p === periodo ? labelPeriodo : { hoy: 'Hoy', ayer: 'Ayer', semana: 'Esta semana', semana_ant: 'Sem. ant.', mes: 'Este mes', mes_ant: 'Mes ant.' }[p]}
+                            {labelPeriodo && p === periodo ? labelPeriodo : ({ hoy: 'Hoy', ayer: 'Ayer', semana: 'Esta semana', semana_ant: 'Sem. ant.', mes: 'Este mes', mes_ant: 'Mes ant.' } as Record<string, string>)[p]}
                         </button>
                     ))}
                     <button
