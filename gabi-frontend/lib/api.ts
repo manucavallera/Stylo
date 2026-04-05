@@ -52,6 +52,7 @@ export const ventasApi = {
 
 export const prendasApi = {
     stats: () => api.get<{ disponibles: number; reservadas: number; sinFoto: number }>('/prendas/stats'),
+    uno: (id: string) => api.get<Prenda>(`/prendas/${id}`),
     listar: (params?: Record<string, string>) => {
         const qs = params ? '?' + new URLSearchParams(params).toString() : ''
         return api.get<Prenda[]>(`/prendas${qs}`)

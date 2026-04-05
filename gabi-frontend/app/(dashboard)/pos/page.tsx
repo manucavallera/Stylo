@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { prendasApi, ventasApi, cajaApi, clientesApi, type Prenda, type Caja, type Cliente } from '@/lib/api'
 import { ClientePicker } from '@/components/ClientePicker'
 
@@ -15,6 +16,17 @@ type VentaTicket = {
 }
 
 export default function PosPage() {
+    return (
+        <Suspense fallback={<div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-zinc-900 rounded-2xl animate-pulse" />)}</div>}>
+            <PosInner />
+        </Suspense>
+    )
+}
+
+function PosInner() {
+    const searchParams = useSearchParams()
+    const prendaIdParam = searchParams.get('prendaId')
+
     const [modo, setModo] = useState<'buscar' | 'qr'>('buscar')
     const [busqueda, setBusqueda] = useState('')
     const [prendas, setPrendas] = useState<Prenda[]>([])
@@ -34,6 +46,14 @@ export default function PosPage() {
         cajaApi.hoy().then(setCaja).catch(() => null)
         clientesApi.listar().then(setClientes).catch(() => null)
     }, [])
+
+    // Pre-cargar prenda si viene de /prendas
+    useEffect(() => {
+        if (!prendaIdParam) return
+        prendasApi.uno(prendaIdParam)
+            .then(p => seleccionarPrenda(p))
+            .catch(() => setError('No se pudo cargar la prenda'))
+    }, [prendaIdParam])
 
     useEffect(() => {
         if (modo !== 'buscar') return
@@ -77,7 +97,6 @@ export default function PosPage() {
                 cajaId: caja?.estado === 'ABIERTA' ? caja.id : undefined,
                 clienteId: cliente?.id,
             })
-            // Guardar datos para el ticket antes de limpiar estado
             setVentaTicket({ prenda, precioFinal: Number(precioFinal), metodoPago, cliente, fecha: new Date() })
             setPrenda(null)
             setQrInput('')
@@ -101,21 +120,23 @@ export default function PosPage() {
                 }
             </div>
 
-            {/* Tabs modo */}
-            <div className="flex gap-2">
-                <button
-                    onClick={() => { setModo('buscar'); setPrenda(null); setError('') }}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase border transition-all ${modo === 'buscar' ? 'bg-orange-500 text-black border-orange-500' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
-                >
-                    🔍 Buscar prenda
-                </button>
-                <button
-                    onClick={() => { setModo('qr'); setPrenda(null); setError('') }}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase border transition-all ${modo === 'qr' ? 'bg-orange-500 text-black border-orange-500' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
-                >
-                    📷 Lector QR
-                </button>
-            </div>
+            {/* Tabs modo — solo si no hay prenda pre-cargada desde prendas */}
+            {!prendaIdParam && (
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => { setModo('buscar'); setPrenda(null); setError('') }}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase border transition-all ${modo === 'buscar' ? 'bg-orange-500 text-black border-orange-500' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
+                    >
+                        🔍 Buscar prenda
+                    </button>
+                    <button
+                        onClick={() => { setModo('qr'); setPrenda(null); setError('') }}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase border transition-all ${modo === 'qr' ? 'bg-orange-500 text-black border-orange-500' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
+                    >
+                        📷 Lector QR
+                    </button>
+                </div>
+            )}
 
             {/* Modo búsqueda */}
             {modo === 'buscar' && !prenda && (
@@ -199,7 +220,16 @@ export default function PosPage() {
                                 )}
                             </div>
                         </div>
-                        <button type="button" onClick={() => setPrenda(null)} className="text-zinc-600 hover:text-zinc-400 text-sm">✕ Cambiar</button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setPrenda(null)
+                                if (prendaIdParam) window.history.back()
+                            }}
+                            className="text-zinc-600 hover:text-zinc-400 text-sm"
+                        >
+                            ✕ Cambiar
+                        </button>
                     </div>
 
                     <div>
@@ -247,7 +277,6 @@ export default function PosPage() {
                 </form>
             )}
 
-            {/* Ticket */}
             {ventaTicket && (
                 <ModalTicket
                     venta={ventaTicket}
@@ -263,13 +292,8 @@ function ModalTicket({ venta, onClose }: { venta: VentaTicket; onClose: () => vo
     const hora = venta.fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
     const metodoLabel: Record<string, string> = { EFECTIVO: 'Efectivo', MERCADOPAGO: 'MercadoPago', TRANSFERENCIA: 'Transferencia' }
 
-    function imprimir() {
-        window.print()
-    }
-
     return (
         <>
-            {/* Estilos de impresión */}
             <style>{`
                 @media print {
                     body * { visibility: hidden !important; }
@@ -286,22 +310,18 @@ function ModalTicket({ venta, onClose }: { venta: VentaTicket; onClose: () => vo
 
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
                 <div className="bg-zinc-950 border border-white/10 rounded-2xl w-full max-w-xs">
-                    {/* Acciones */}
                     <div className="flex items-center justify-between p-4 border-b border-white/5">
                         <span className="text-white font-black uppercase text-sm">Ticket de venta</span>
                         <button onClick={onClose} className="text-zinc-500 hover:text-white text-xl leading-none">✕</button>
                     </div>
 
-                    {/* Contenido del ticket */}
                     <div id="ticket-print" className="p-6 font-mono">
-                        {/* Encabezado */}
                         <div className="text-center border-b border-dashed border-white/20 pb-4 mb-4">
                             <p className="text-white font-black text-lg uppercase tracking-wider">STREET & STYLO</p>
                             <p className="text-orange-400 text-xs uppercase tracking-widest">AMERICAN ★</p>
                             <p className="text-zinc-500 text-xs mt-2">{fecha} — {hora}</p>
                         </div>
 
-                        {/* Ítem */}
                         <div className="border-b border-dashed border-white/20 pb-4 mb-4 space-y-1">
                             <div className="flex justify-between items-start">
                                 <div>
@@ -313,7 +333,6 @@ function ModalTicket({ venta, onClose }: { venta: VentaTicket; onClose: () => vo
                             </div>
                         </div>
 
-                        {/* Total y método */}
                         <div className="space-y-1 mb-4">
                             <div className="flex justify-between text-xs text-zinc-400">
                                 <span>Forma de pago</span>
@@ -325,25 +344,17 @@ function ModalTicket({ venta, onClose }: { venta: VentaTicket; onClose: () => vo
                             </div>
                         </div>
 
-                        {/* Pie */}
                         <div className="text-center border-t border-dashed border-white/20 pt-4">
                             <p className="text-zinc-400 text-xs">¡Gracias por tu compra!</p>
                             <p className="text-zinc-600 text-[10px] mt-1">Conservá este comprobante</p>
                         </div>
                     </div>
 
-                    {/* Botones */}
                     <div className="flex gap-2 p-4 border-t border-white/5">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase hover:border-white/20"
-                        >
+                        <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm font-bold uppercase hover:border-white/20">
                             Cerrar
                         </button>
-                        <button
-                            onClick={imprimir}
-                            className="flex-1 py-2.5 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400"
-                        >
+                        <button onClick={() => window.print()} className="flex-1 py-2.5 rounded-xl bg-orange-500 text-black text-sm font-black uppercase hover:bg-orange-400">
                             🖨️ Imprimir
                         </button>
                     </div>

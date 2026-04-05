@@ -171,7 +171,15 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
                     {prenda.estado}
                 </div>
                 {/* Botones hover */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap p-2">
+                    {prenda.estado === 'DISPONIBLE' && (
+                        <a
+                            href={`/pos?prendaId=${prenda.id}`}
+                            className="px-3 py-1.5 bg-emerald-500 text-black text-xs font-black uppercase rounded-lg hover:bg-emerald-400"
+                        >
+                            Vender
+                        </a>
+                    )}
                     <button
                         onClick={onEditar}
                         className="px-3 py-1.5 bg-orange-500 text-black text-xs font-black uppercase rounded-lg hover:bg-orange-400"
