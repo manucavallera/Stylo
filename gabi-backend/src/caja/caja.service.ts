@@ -31,18 +31,18 @@ export class CajaService {
                     data: { estado: 'ABIERTA', montoReal: null, diferencia: null },
                 });
 
-                // Asignar ventas huérfanas de hoy
+                // Asignar ventas huérfanas de hoy (solo efectivo suma al esperado)
                 const huerfanas = await tx.venta.aggregate({
-                    where: { cajaId: null, fechaVenta: { gte: hoy } },
+                    where: { cajaId: null, fechaVenta: { gte: hoy }, metodoPago: 'EFECTIVO' },
                     _sum: { precioFinal: true },
                 });
                 const sumaHuerfanas = Number(huerfanas._sum.precioFinal ?? 0);
 
+                await tx.venta.updateMany({
+                    where: { cajaId: null, fechaVenta: { gte: hoy } },
+                    data: { cajaId: cajaExistente.id },
+                });
                 if (sumaHuerfanas > 0) {
-                    await tx.venta.updateMany({
-                        where: { cajaId: null, fechaVenta: { gte: hoy } },
-                        data: { cajaId: cajaExistente.id },
-                    });
                     await tx.cajaDiaria.update({
                         where: { id: cajaExistente.id },
                         data: { montoEsperado: { increment: sumaHuerfanas } },
@@ -58,23 +58,23 @@ export class CajaService {
                 data: {
                     fecha: hoy,
                     montoApertura: dto.montoApertura,
-                    montoEsperado: 0,
+                    montoEsperado: dto.montoApertura, // arranca con el efectivo inicial
                     estado: 'ABIERTA',
                 },
             });
 
-            // Asignar ventas huérfanas de hoy (registradas sin caja abierta)
+            // Asignar ventas huérfanas de hoy (solo efectivo suma al esperado)
             const huerfanas = await tx.venta.aggregate({
-                where: { cajaId: null, fechaVenta: { gte: hoy } },
+                where: { cajaId: null, fechaVenta: { gte: hoy }, metodoPago: 'EFECTIVO' },
                 _sum: { precioFinal: true },
             });
             const sumaHuerfanas = Number(huerfanas._sum.precioFinal ?? 0);
 
+            await tx.venta.updateMany({
+                where: { cajaId: null, fechaVenta: { gte: hoy } },
+                data: { cajaId: caja.id },
+            });
             if (sumaHuerfanas > 0) {
-                await tx.venta.updateMany({
-                    where: { cajaId: null, fechaVenta: { gte: hoy } },
-                    data: { cajaId: caja.id },
-                });
                 await tx.cajaDiaria.update({
                     where: { id: caja.id },
                     data: { montoEsperado: { increment: sumaHuerfanas } },
@@ -119,10 +119,10 @@ export class CajaService {
             throw new BadRequestException('Esta caja ya está cerrada');
         }
 
-        // montoEsperado = apertura + todas las ventas del día - gastos
-        const [todasLasVentas, gastosDelDia] = await Promise.all([
+        // montoEsperado = apertura + ventas EFECTIVO - gastos y retiros
+        const [ventasEfectivo, salidaCaja] = await Promise.all([
             this.prisma.venta.aggregate({
-                where: { cajaId: id },
+                where: { cajaId: id, metodoPago: 'EFECTIVO' },
                 _sum: { precioFinal: true },
             }),
             this.prisma.gastoCaja.aggregate({
@@ -133,8 +133,8 @@ export class CajaService {
 
         const montoEsperado =
             Number(caja.montoApertura) +
-            Number(todasLasVentas._sum.precioFinal ?? 0) -
-            Number(gastosDelDia._sum.monto ?? 0);
+            Number(ventasEfectivo._sum.precioFinal ?? 0) -
+            Number(salidaCaja._sum.monto ?? 0);
 
         const diferencia = dto.montoReal - montoEsperado;
 
@@ -156,7 +156,7 @@ export class CajaService {
         if (caja.estado === 'CERRADA') throw new BadRequestException('No se puede registrar gastos en una caja cerrada');
 
         return this.prisma.gastoCaja.create({
-            data: { cajaId, concepto: dto.concepto, monto: dto.monto },
+            data: { cajaId, concepto: dto.concepto, monto: dto.monto, tipo: dto.tipo ?? 'GASTO' },
         });
     }
 

@@ -4,16 +4,13 @@
 // ============================================================
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-
 
 // ============================================================
 // ENUMS
@@ -64,6 +61,11 @@ enum EstadoCaja {
 enum EstadoComprobante {
   EMITIDO
   ANULADO
+}
+
+enum TipoGastoCaja {
+  GASTO
+  RETIRO
 }
 
 // ============================================================
@@ -258,19 +260,19 @@ model CajaDiaria {
 }
 
 // ============================================================
-// GASTO DE CAJA
+// GASTO CAJA
 // ============================================================
 
 model GastoCaja {
-  id        String     @id @default(uuid())
-  cajaId    String     @map("caja_id")
+  id        String        @id @default(uuid())
+  cajaId    String        @map("caja_id")
   concepto  String
-  monto     Decimal    @db.Decimal(12, 2)
-  createdAt DateTime   @default(now()) @map("created_at")
+  monto     Decimal       @db.Decimal(12, 2)
+  tipo      TipoGastoCaja @default(GASTO)
+  createdAt DateTime      @default(now()) @map("created_at")
 
-  caja CajaDiaria @relation(fields: [cajaId], references: [id], onDelete: Cascade)
+  caja CajaDiaria @relation(fields: [cajaId], references: [id])
 
-  @@index([cajaId])
   @@map("gastos_caja")
 }
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query } from '@nestjs/common';
 import { VentasService } from './ventas.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { Public } from '../auth/public.decorator';
@@ -30,6 +30,13 @@ export class VentasController {
     @Get('resumen-diario')
     resumenDiario() {
         return this.ventasService.resumenDiario();
+    }
+
+    // GET /api/v1/ventas/balance?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+    @Get('balance')
+    balance(@Query('desde') desde: string, @Query('hasta') hasta: string) {
+        const hoy = new Date().toISOString().split('T')[0];
+        return this.ventasService.balance(desde ?? hoy, hasta ?? hoy);
     }
 
     // GET /api/v1/ventas/huerfanas — ventas sin caja (cualquier fecha)

@@ -1,4 +1,4 @@
-import { IsNumber, IsPositive, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
 
 export class AbrirCajaDto {
     @IsNumber({ maxDecimalPlaces: 2 })
@@ -19,4 +19,8 @@ export class RegistrarGastoDto {
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
     monto: number;
+
+    @IsEnum(['GASTO', 'RETIRO'])
+    @IsOptional()
+    tipo?: 'GASTO' | 'RETIRO';
 }

@@ -47,15 +47,11 @@ export class VentasService {
                 data: { estado: 'VENDIDO' },
             });
 
-            // Si hay caja abierta, sumar la venta al monto esperado
-            if (dto.cajaId) {
+            // Si hay caja abierta y es EFECTIVO, sumar al monto esperado físico
+            if (dto.cajaId && dto.metodoPago === 'EFECTIVO') {
                 await tx.cajaDiaria.update({
                     where: { id: dto.cajaId },
-                    data: {
-                        montoEsperado: {
-                            increment: dto.precioFinal,
-                        },
-                    },
+                    data: { montoEsperado: { increment: dto.precioFinal } },
                 });
             }
 
@@ -162,6 +158,50 @@ export class VentasService {
         });
     }
 
+    // ── Balance por período ──────────────────────────────────────
+    async balance(desde: string, hasta: string) {
+        const fechaDesde = new Date(desde);
+        fechaDesde.setHours(0, 0, 0, 0);
+        const fechaHasta = new Date(hasta);
+        fechaHasta.setHours(23, 59, 59, 999);
+
+        const [totales, porMetodo, ventas] = await Promise.all([
+            this.prisma.venta.aggregate({
+                where: { fechaVenta: { gte: fechaDesde, lte: fechaHasta } },
+                _sum: { precioFinal: true, costoHistoricoArs: true },
+                _count: true,
+            }),
+            this.prisma.venta.groupBy({
+                by: ['metodoPago'],
+                where: { fechaVenta: { gte: fechaDesde, lte: fechaHasta } },
+                _sum: { precioFinal: true },
+                _count: true,
+            }),
+            this.prisma.venta.findMany({
+                where: { fechaVenta: { gte: fechaDesde, lte: fechaHasta } },
+                include: {
+                    prenda: { include: { categoria: true, talle: true, fotos: { take: 1 } } },
+                    cliente: true,
+                },
+                orderBy: { fechaVenta: 'desc' },
+            }),
+        ]);
+
+        const totalVendido = Number(totales._sum.precioFinal ?? 0);
+        const totalCosto = Number(totales._sum.costoHistoricoArs ?? 0);
+
+        return {
+            desde: fechaDesde.toISOString(),
+            hasta: fechaHasta.toISOString(),
+            cantidadVentas: totales._count,
+            totalVendido,
+            totalCosto,
+            gananciaEstimada: totalVendido - totalCosto,
+            porMetodoPago: porMetodo,
+            ventas,
+        };
+    }
+
     // ── Ventas sin caja (huérfanas) ──────────────────────────────
     huerfanas() {
         return this.prisma.venta.findMany({
@@ -185,7 +225,8 @@ export class VentasService {
                 data: { estado: 'DISPONIBLE' },
             });
 
-            if (venta.cajaId) {
+            // Solo descuenta de caja si era EFECTIVO
+            if (venta.cajaId && venta.metodoPago === 'EFECTIVO') {
                 await tx.cajaDiaria.update({
                     where: { id: venta.cajaId },
                     data: { montoEsperado: { decrement: venta.precioFinal } },
