@@ -110,6 +110,16 @@ export const clientesApi = {
     eliminar: (id: string) => api.delete(`/clientes/${id}`),
 }
 
+export interface SearchResult {
+    prendas: Prenda[]
+    clientes: Cliente[]
+    reservas: Reserva[]
+}
+
+export const searchApi = {
+    buscar: (q: string) => api.get<SearchResult>(`/search?q=${encodeURIComponent(q)}`),
+}
+
 export const gruposWaApi = {
     listar: () => api.get<GrupoWhatsapp[]>('/grupos-whatsapp'),
     crear: (data: { nombre: string; groupId: string }) => api.post<GrupoWhatsapp>('/grupos-whatsapp', data),

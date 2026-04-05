@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { GlobalSearch } from '@/components/GlobalSearch'
 
 const navItems = [
     { href: '/dashboard', icon: '📊', label: 'Dashboard' },
@@ -126,6 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Contenido principal */}
             <main className="md:ml-64 pt-14 md:pt-0 p-4 md:p-8 min-h-screen">
+                <GlobalSearch />
                 {children}
             </main>
         </div>
