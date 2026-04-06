@@ -203,15 +203,22 @@ export class VentasService {
     }
 
     // ── Ventas sin caja (huérfanas) ──────────────────────────────
-    huerfanas() {
-        return this.prisma.venta.findMany({
-            where: { cajaId: null },
-            include: {
-                prenda: { include: { categoria: true, talle: true } },
-                cliente: true,
-            },
-            orderBy: { fechaVenta: 'desc' },
-        });
+    async huerfanas(skip = 0, take = 50) {
+        const where = { cajaId: null };
+        const [items, total] = await Promise.all([
+            this.prisma.venta.findMany({
+                where,
+                include: {
+                    prenda: { include: { categoria: true, talle: true } },
+                    cliente: true,
+                },
+                orderBy: { fechaVenta: 'desc' },
+                skip,
+                take,
+            }),
+            this.prisma.venta.count({ where }),
+        ]);
+        return { items, total, skip, take };
     }
 
     // ── Anular venta ─────────────────────────────────────────────

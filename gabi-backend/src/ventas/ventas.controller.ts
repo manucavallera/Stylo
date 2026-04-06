@@ -41,8 +41,11 @@ export class VentasController {
 
     // GET /api/v1/ventas/huerfanas — ventas sin caja (cualquier fecha)
     @Get('huerfanas')
-    huerfanas() {
-        return this.ventasService.huerfanas();
+    huerfanas(@Query('skip') skip?: string, @Query('take') take?: string) {
+        return this.ventasService.huerfanas(
+            skip ? parseInt(skip) : 0,
+            take ? parseInt(take) : 50,
+        );
     }
 
     // GET /api/v1/ventas/:id

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common';
 import { ReservasService } from './reservas.service';
 import { CreateReservaDto, ConfirmarReservaDto, ReservaBotDto, ConfirmarPorBotDto } from './dto/create-reserva.dto';
 import { Public } from '../auth/public.decorator';
@@ -21,8 +21,11 @@ export class ReservasController {
 
     // GET /api/v1/reservas/historial
     @Get('historial')
-    findHistorial() {
-        return this.reservasService.findHistorial();
+    findHistorial(@Query('skip') skip?: string, @Query('take') take?: string) {
+        return this.reservasService.findHistorial(
+            skip ? parseInt(skip) : 0,
+            take ? parseInt(take) : 50,
+        );
     }
 
     // POST /api/v1/reservas/:id/confirmar — cliente pagó

@@ -11,14 +11,31 @@ export class ClientesService {
         return this.prisma.cliente.create({ data: dto });
     }
 
-    findAll() {
-        return this.prisma.cliente.findMany({
-            orderBy: { nombre: 'asc' },
-            include: {
-                _count: { select: { ventas: true } },
-                ventas: { select: { precioFinal: true, fechaVenta: true }, orderBy: { fechaVenta: 'desc' }, take: 1 },
-            },
-        });
+    async findAll(skip = 0, take = 50, buscar?: string) {
+        const where = buscar
+            ? {
+                OR: [
+                    { nombre: { contains: buscar, mode: 'insensitive' as const } },
+                    { telefonoWhatsapp: { contains: buscar } },
+                ],
+            }
+            : undefined;
+
+        const [items, total] = await Promise.all([
+            this.prisma.cliente.findMany({
+                where,
+                orderBy: { nombre: 'asc' },
+                skip,
+                take,
+                include: {
+                    _count: { select: { ventas: true } },
+                    ventas: { select: { precioFinal: true }, orderBy: { fechaVenta: 'desc' } },
+                },
+            }),
+            this.prisma.cliente.count({ where }),
+        ]);
+
+        return { items, total, skip, take };
     }
 
     async findOne(id: string) {

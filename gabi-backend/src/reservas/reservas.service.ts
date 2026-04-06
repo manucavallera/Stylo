@@ -644,13 +644,19 @@ export class ReservasService {
     }
 
     // ── Historial de reservas ────────────────────────────────────
-    findHistorial() {
-        return this.prisma.reserva.findMany({
-            where: { estado: { not: 'ACTIVA' } },
-            include: { prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 }, categoria: true, talle: true } }, cliente: true },
-            orderBy: { createdAt: 'desc' },
-            take: 100,
-        });
+    async findHistorial(skip = 0, take = 50) {
+        const where = { estado: { not: 'ACTIVA' as const } };
+        const [items, total] = await Promise.all([
+            this.prisma.reserva.findMany({
+                where,
+                include: { prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 }, categoria: true, talle: true } }, cliente: true },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take,
+            }),
+            this.prisma.reserva.count({ where }),
+        ]);
+        return { items, total, skip, take };
     }
 
     // ── Listar reservas activas ──────────────────────────────────

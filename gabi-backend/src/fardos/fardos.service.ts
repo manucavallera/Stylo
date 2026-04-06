@@ -50,6 +50,7 @@ export class FardosService {
             where: { estado: 'CERRADO' },
             include: { proveedor: true },
             orderBy: { updatedAt: 'desc' },
+            take: 30,
         });
     }
 
