@@ -95,7 +95,107 @@ export default function CajaPage() {
                 <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5 capitalize">{hoy}</p>
             </div>
 
-            {/* ── Resumen del día — siempre visible ── */}
+            {/* ── Control de efectivo — primero porque es lo que más usa Gabi ── */}
+            <div className="space-y-3">
+                <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">Control de efectivo</h2>
+                {sinCaja ? (
+                    <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5 flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-zinc-400 text-sm font-bold">Sin caja abierta</p>
+                            <p className="text-zinc-600 text-xs mt-0.5">Abrí la caja para controlar el efectivo y registrar gastos</p>
+                        </div>
+                        <button
+                            onClick={() => setModalAbrir(true)}
+                            className="shrink-0 px-5 py-2.5 bg-orange-500 text-black font-black text-xs uppercase rounded-xl hover:bg-orange-400 transition-colors"
+                        >
+                            Abrir caja
+                        </button>
+                    </div>
+                ) : caja ? (
+                    <div className={`rounded-2xl border p-5 space-y-4 ${caja.estado === 'ABIERTA' ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-zinc-900 border-white/5'}`}>
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                                <span className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${caja.estado === 'ABIERTA' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-zinc-700 text-zinc-400 border-zinc-600'}`}>
+                                    {caja.estado}
+                                </span>
+                                {caja.estado === 'ABIERTA' ? (
+                                    <div className="mt-3">
+                                        <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Efectivo esperado en caja</p>
+                                        <p className="text-emerald-400 text-4xl font-black">${Number(caja.montoEsperado).toLocaleString('es-AR')}</p>
+                                        <p className="text-zinc-600 text-xs mt-1">Apertura: ${Number(caja.montoApertura).toLocaleString('es-AR')}</p>
+                                    </div>
+                                ) : (
+                                    <div className="mt-3 flex gap-6">
+                                        <div>
+                                            <p className="text-zinc-500 text-xs uppercase tracking-widest">Esperado</p>
+                                            <p className="text-white font-black">${Number(caja.montoEsperado).toLocaleString('es-AR')}</p>
+                                        </div>
+                                        {caja.montoReal != null && (
+                                            <div>
+                                                <p className="text-zinc-500 text-xs uppercase tracking-widest">Real contado</p>
+                                                <p className="text-white font-black">${Number(caja.montoReal).toLocaleString('es-AR')}</p>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="text-zinc-500 text-xs uppercase tracking-widest">Apertura</p>
+                                            <p className="text-white font-black">${Number(caja.montoApertura).toLocaleString('es-AR')}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            {caja.estado === 'ABIERTA' && (
+                                <div className="flex flex-col gap-2">
+                                    <button onClick={() => setModalGasto(true)} className="px-4 py-2 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-orange-500/30 hover:text-orange-400 transition-colors">
+                                        + Gasto
+                                    </button>
+                                    <button onClick={() => setModalCerrar(true)} className="px-4 py-2 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-red-500/30 hover:text-red-400 transition-colors">
+                                        Cerrar
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {caja.estado === 'CERRADA' && caja.diferencia != null && (
+                            <div className={`rounded-xl p-3 border text-sm ${Number(caja.diferencia) >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                                Diferencia: {Number(caja.diferencia) >= 0 ? '+' : ''}${Number(caja.diferencia).toLocaleString('es-AR')} {Number(caja.diferencia) === 0 ? '✓ Cuadra' : Number(caja.diferencia) > 0 ? '(sobrante)' : '(faltante)'}
+                            </div>
+                        )}
+
+                        {caja.gastos && caja.gastos.length > 0 && (
+                            <div className="border-t border-white/5 pt-3 space-y-2">
+                                {caja.gastos.filter(g => g.tipo !== 'RETIRO').length > 0 && (
+                                    <>
+                                        <p className="text-zinc-500 text-xs uppercase tracking-widest">Gastos</p>
+                                        {caja.gastos.filter(g => g.tipo !== 'RETIRO').map(g => (
+                                            <div key={g.id} className="flex justify-between text-sm">
+                                                <span className="text-zinc-400">{g.concepto}</span>
+                                                <span className="text-red-400 font-bold">−${Number(g.monto).toLocaleString('es-AR')}</span>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                                {caja.gastos.filter(g => g.tipo === 'RETIRO').length > 0 && (
+                                    <>
+                                        <p className="text-zinc-500 text-xs uppercase tracking-widest mt-2">Retiros</p>
+                                        {caja.gastos.filter(g => g.tipo === 'RETIRO').map(g => (
+                                            <div key={g.id} className="flex justify-between text-sm">
+                                                <span className="text-zinc-400">{g.concepto}</span>
+                                                <span className="text-amber-400 font-bold">−${Number(g.monto).toLocaleString('es-AR')}</span>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                                <div className="flex justify-between text-xs pt-1 border-t border-white/5">
+                                    <span className="text-zinc-500 uppercase">Total salidas</span>
+                                    <span className="text-red-400 font-black">−${caja.gastos.reduce((a, g) => a + Number(g.monto), 0).toLocaleString('es-AR')}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : null}
+            </div>
+
+            {/* ── Resumen del día ── */}
             <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                     <div className="col-span-2 bg-zinc-900 border border-white/5 rounded-2xl p-5 flex items-center justify-between">
@@ -151,102 +251,6 @@ export default function CajaPage() {
             {huerfanas.length > 0 && (
                 <VentasHuerfanas huerfanas={huerfanas} metodoLabel={METODO_LABEL} />
             )}
-
-            {/* ── Control de efectivo ── */}
-            <div className="space-y-3">
-                <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">Control de efectivo</h2>
-                {sinCaja ? (
-                    <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5 flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-zinc-400 text-sm font-bold">Sin caja abierta</p>
-                            <p className="text-zinc-600 text-xs mt-0.5">Abrí la caja para controlar el efectivo y registrar gastos</p>
-                        </div>
-                        <button
-                            onClick={() => setModalAbrir(true)}
-                            className="shrink-0 px-5 py-2.5 bg-orange-500 text-black font-black text-xs uppercase rounded-xl hover:bg-orange-400 transition-colors"
-                        >
-                            Abrir caja
-                        </button>
-                    </div>
-                ) : caja ? (
-                    <div className={`rounded-2xl border p-5 space-y-4 ${caja.estado === 'ABIERTA' ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-zinc-900 border-white/5'}`}>
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${caja.estado === 'ABIERTA' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-zinc-700 text-zinc-400 border-zinc-600'}`}>
-                                    {caja.estado}
-                                </span>
-                                <div className="mt-3 flex gap-6">
-                                    <div>
-                                        <p className="text-zinc-500 text-xs uppercase tracking-widest">Apertura</p>
-                                        <p className="text-white font-black">${Number(caja.montoApertura).toLocaleString('es-AR')}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-zinc-500 text-xs uppercase tracking-widest">Esperado</p>
-                                        <p className="text-white font-black">${Number(caja.montoEsperado).toLocaleString('es-AR')}</p>
-                                    </div>
-                                    {caja.estado === 'CERRADA' && caja.montoReal != null && (
-                                        <div>
-                                            <p className="text-zinc-500 text-xs uppercase tracking-widest">Real</p>
-                                            <p className="text-white font-black">${Number(caja.montoReal).toLocaleString('es-AR')}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            {caja.estado === 'ABIERTA' ? (
-                                <div className="flex flex-col gap-2">
-                                    <button onClick={() => setModalGasto(true)} className="px-4 py-2 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-orange-500/30 hover:text-orange-400 transition-colors">
-                                        + Gasto
-                                    </button>
-                                    <button onClick={() => setModalCerrar(true)} className="px-4 py-2 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-red-500/30 hover:text-red-400 transition-colors">
-                                        Cerrar
-                                    </button>
-                                </div>
-                            ) : (
-                                <button onClick={() => setModalAbrir(true)} className="px-4 py-2 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-emerald-500/30 hover:text-emerald-400 transition-colors">
-                                    Reabrir
-                                </button>
-                            )}
-                        </div>
-
-                        {caja.estado === 'CERRADA' && caja.diferencia != null && (
-                            <div className={`rounded-xl p-3 border text-sm ${Number(caja.diferencia) >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                                Diferencia: {Number(caja.diferencia) >= 0 ? '+' : ''}${Number(caja.diferencia).toLocaleString('es-AR')} {Number(caja.diferencia) === 0 ? '✓ Cuadra' : Number(caja.diferencia) > 0 ? '(sobrante)' : '(faltante)'}
-                            </div>
-                        )}
-
-                        {caja.gastos && caja.gastos.length > 0 && (
-                            <div className="border-t border-white/5 pt-3 space-y-2">
-                                {caja.gastos.filter(g => g.tipo !== 'RETIRO').length > 0 && (
-                                    <>
-                                        <p className="text-zinc-500 text-xs uppercase tracking-widest">Gastos</p>
-                                        {caja.gastos.filter(g => g.tipo !== 'RETIRO').map(g => (
-                                            <div key={g.id} className="flex justify-between text-sm">
-                                                <span className="text-zinc-400">{g.concepto}</span>
-                                                <span className="text-red-400 font-bold">−${Number(g.monto).toLocaleString('es-AR')}</span>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                                {caja.gastos.filter(g => g.tipo === 'RETIRO').length > 0 && (
-                                    <>
-                                        <p className="text-zinc-500 text-xs uppercase tracking-widest mt-2">Retiros</p>
-                                        {caja.gastos.filter(g => g.tipo === 'RETIRO').map(g => (
-                                            <div key={g.id} className="flex justify-between text-sm">
-                                                <span className="text-zinc-400">{g.concepto}</span>
-                                                <span className="text-amber-400 font-bold">−${Number(g.monto).toLocaleString('es-AR')}</span>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                                <div className="flex justify-between text-xs pt-1 border-t border-white/5">
-                                    <span className="text-zinc-500 uppercase">Total salidas</span>
-                                    <span className="text-red-400 font-black">−${caja.gastos.reduce((a, g) => a + Number(g.monto), 0).toLocaleString('es-AR')}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ) : null}
-            </div>
 
             {/* ── Historial ── */}
             {historial.length > 0 && (

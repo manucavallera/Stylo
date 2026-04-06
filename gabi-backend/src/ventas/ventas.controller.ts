@@ -32,11 +32,28 @@ export class VentasController {
         return this.ventasService.resumenDiario();
     }
 
-    // GET /api/v1/ventas/balance?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+    // GET /api/v1/ventas/balance?desde=YYYY-MM-DD&hasta=YYYY-MM-DD — KPIs rápidos
     @Get('balance')
     balance(@Query('desde') desde: string, @Query('hasta') hasta: string) {
         const hoy = new Date().toISOString().split('T')[0];
         return this.ventasService.balance(desde ?? hoy, hasta ?? hoy);
+    }
+
+    // GET /api/v1/ventas/balance-detalle?desde=...&hasta=...&skip=0&take=50
+    @Get('balance-detalle')
+    balanceDetalle(
+        @Query('desde') desde: string,
+        @Query('hasta') hasta: string,
+        @Query('skip') skip?: string,
+        @Query('take') take?: string,
+    ) {
+        const hoy = new Date().toISOString().split('T')[0];
+        return this.ventasService.balanceDetalle(
+            desde ?? hoy,
+            hasta ?? hoy,
+            skip ? parseInt(skip) : 0,
+            take ? parseInt(take) : 50,
+        );
     }
 
     // GET /api/v1/ventas/huerfanas — ventas sin caja (cualquier fecha)

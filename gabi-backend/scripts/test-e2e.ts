@@ -9,7 +9,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const BASE = 'http://localhost:3001/api/v1';
+const BASE = process.env.BASE_URL ?? 'http://localhost:3001/api/v1';
 let AUTH_TOKEN = '';
 
 // ─── helpers ────────────────────────────────────────────────────────────────

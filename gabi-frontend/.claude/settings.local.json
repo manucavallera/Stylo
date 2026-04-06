@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(grep -n \"params\\\\.\" /c/Users/coco/.gemini/antigravity/scratch/gabi-frontend/app/\\\\\\(dashboard\\\\\\)/fardos/[id]/etiquetas/page.tsx)",
+      "Bash(npx ts-node -e \":*)",
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch(domain:easypanel.io)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

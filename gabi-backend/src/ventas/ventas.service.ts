@@ -158,48 +158,84 @@ export class VentasService {
         });
     }
 
-    // ── Balance por período ──────────────────────────────────────
+    // ── Balance KPIs (rápido, sin detalle de ventas) ────────────
     async balance(desde: string, hasta: string) {
         const fechaDesde = new Date(desde);
         fechaDesde.setHours(0, 0, 0, 0);
         const fechaHasta = new Date(hasta);
         fechaHasta.setHours(23, 59, 59, 999);
+        const where = { fechaVenta: { gte: fechaDesde, lte: fechaHasta } };
 
-        const [totales, porMetodo, ventas] = await Promise.all([
+        const [totales, porMetodo, porCategoria] = await Promise.all([
             this.prisma.venta.aggregate({
-                where: { fechaVenta: { gte: fechaDesde, lte: fechaHasta } },
-                _sum: { precioFinal: true, costoHistoricoArs: true },
+                where,
+                _sum: { precioFinal: true },
                 _count: true,
             }),
             this.prisma.venta.groupBy({
                 by: ['metodoPago'],
-                where: { fechaVenta: { gte: fechaDesde, lte: fechaHasta } },
+                where,
                 _sum: { precioFinal: true },
                 _count: true,
             }),
+            // Breakdown por categoría via prendas
             this.prisma.venta.findMany({
-                where: { fechaVenta: { gte: fechaDesde, lte: fechaHasta } },
-                include: {
-                    prenda: { include: { categoria: true, talle: true, fotos: { take: 1 } } },
-                    cliente: true,
+                where,
+                select: {
+                    precioFinal: true,
+                    prenda: { select: { categoria: { select: { nombre: true } } } },
                 },
-                orderBy: { fechaVenta: 'desc' },
             }),
         ]);
 
         const totalVendido = Number(totales._sum.precioFinal ?? 0);
-        const totalCosto = Number(totales._sum.costoHistoricoArs ?? 0);
+
+        // Agrupar por categoría manualmente
+        const catMap = new Map<string, { total: number; cantidad: number }>();
+        for (const v of porCategoria) {
+            const cat = v.prenda?.categoria?.nombre ?? 'Sin categoría';
+            const entry = catMap.get(cat) ?? { total: 0, cantidad: 0 };
+            entry.total += Number(v.precioFinal);
+            entry.cantidad += 1;
+            catMap.set(cat, entry);
+        }
+        const porCategoriaSorted = Array.from(catMap.entries())
+            .map(([nombre, data]) => ({ nombre, ...data }))
+            .sort((a, b) => b.total - a.total);
 
         return {
             desde: fechaDesde.toISOString(),
             hasta: fechaHasta.toISOString(),
             cantidadVentas: totales._count,
             totalVendido,
-            totalCosto,
-            gananciaEstimada: totalVendido - totalCosto,
             porMetodoPago: porMetodo,
-            ventas,
+            porCategoria: porCategoriaSorted,
         };
+    }
+
+    // ── Detalle de ventas del período (paginado) ─────────────────
+    async balanceDetalle(desde: string, hasta: string, skip = 0, take = 50) {
+        const fechaDesde = new Date(desde);
+        fechaDesde.setHours(0, 0, 0, 0);
+        const fechaHasta = new Date(hasta);
+        fechaHasta.setHours(23, 59, 59, 999);
+        const where = { fechaVenta: { gte: fechaDesde, lte: fechaHasta } };
+
+        const [items, total] = await Promise.all([
+            this.prisma.venta.findMany({
+                where,
+                include: {
+                    prenda: { include: { categoria: true, talle: true, fotos: { take: 1 } } },
+                    cliente: true,
+                },
+                orderBy: { fechaVenta: 'desc' },
+                skip,
+                take,
+            }),
+            this.prisma.venta.count({ where }),
+        ]);
+
+        return { items, total, skip, take };
     }
 
     // ── Ventas sin caja (huérfanas) ──────────────────────────────

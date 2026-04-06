@@ -50,6 +50,8 @@ export const ventasApi = {
     hoy: () => api.get<Venta[]>('/ventas/hoy'),
     huerfanas: (skip = 0, take = 50) => api.get<Paginated<Venta>>(`/ventas/huerfanas?skip=${skip}&take=${take}`),
     balance: (desde: string, hasta: string) => api.get<BalanceResult>(`/ventas/balance?desde=${desde}&hasta=${hasta}`),
+    balanceDetalle: (desde: string, hasta: string, skip = 0, take = 50) =>
+        api.get<Paginated<Venta>>(`/ventas/balance-detalle?desde=${desde}&hasta=${hasta}&skip=${skip}&take=${take}`),
     registrar: (data: NuevaVenta) => api.post<Venta>('/ventas', data),
     anular: (id: string) => api.delete<{ ok: boolean }>(`/ventas/${id}`),
 }
@@ -177,10 +179,8 @@ export interface BalanceResult {
     hasta: string
     cantidadVentas: number
     totalVendido: number
-    totalCosto: number
-    gananciaEstimada: number
     porMetodoPago: { metodoPago: string; _sum: { precioFinal: number }; _count: number }[]
-    ventas: Venta[]
+    porCategoria: { nombre: string; total: number; cantidad: number }[]
 }
 export interface Caja { id: string; fecha: string; montoApertura: number; montoEsperado: number; montoReal?: number; diferencia?: number; estado: string; gastos?: GastoCaja[] }
 export interface Cliente { id: string; nombre: string; telefonoWhatsapp?: string; notas?: string }
