@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { clientesApi, type ClienteConStats, type ClienteDetalle } from '@/lib/api'
 
 const METODO_ICON: Record<string, string> = {
@@ -9,21 +9,44 @@ const METODO_ICON: Record<string, string> = {
     TRANSFERENCIA: '🏦',
 }
 
+const TAKE = 50
+
 export default function ClientesPage() {
     const [clientes, setClientes] = useState<ClienteConStats[]>([])
+    const [total, setTotal] = useState(0)
+    const [skip, setSkip] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [loadingMas, setLoadingMas] = useState(false)
     const [busqueda, setBusqueda] = useState('')
     const [detalle, setDetalle] = useState<ClienteDetalle | null>(null)
     const [loadingDetalle, setLoadingDetalle] = useState(false)
     const [modalNuevo, setModalNuevo] = useState(false)
     const [editando, setEditando] = useState<ClienteConStats | null>(null)
+    const busquedaTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    async function cargar() {
+    async function cargar(nuevaBusqueda?: string) {
         setLoading(true)
-        clientesApi.listar().then(setClientes).finally(() => setLoading(false))
+        setSkip(0)
+        const res = await clientesApi.listar({ skip: 0, take: TAKE, buscar: nuevaBusqueda ?? busqueda }).finally(() => setLoading(false))
+        setClientes(res.items)
+        setTotal(res.total)
+    }
+
+    async function cargarMas() {
+        const nuevoSkip = skip + TAKE
+        setLoadingMas(true)
+        const res = await clientesApi.listar({ skip: nuevoSkip, take: TAKE, buscar: busqueda }).finally(() => setLoadingMas(false))
+        setClientes(prev => [...prev, ...res.items])
+        setSkip(nuevoSkip)
     }
 
     useEffect(() => { cargar() }, [])
+
+    function handleBusqueda(valor: string) {
+        setBusqueda(valor)
+        if (busquedaTimer.current) clearTimeout(busquedaTimer.current)
+        busquedaTimer.current = setTimeout(() => cargar(valor), 300)
+    }
 
     async function abrirDetalle(id: string) {
         setLoadingDetalle(true)
@@ -42,26 +65,14 @@ export default function ClientesPage() {
         }
     }
 
-    const filtrados = busqueda
-        ? clientes.filter(c =>
-            c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-            c.telefonoWhatsapp?.includes(busqueda)
-        )
-        : clientes
-
-    // Ordenar por total gastado desc
-    const ordenados = [...filtrados].sort((a, b) => {
-        const totalA = a.ventas.reduce((s, v) => s + Number(v.precioFinal), 0)
-        const totalB = b.ventas.reduce((s, v) => s + Number(v.precioFinal), 0)
-        return totalB - totalA
-    })
+    const hayMas = clientes.length < total
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div>
                     <h1 className="text-2xl font-black text-white uppercase">Clientes</h1>
-                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">{clientes.length} registrados</p>
+                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">{total} registrados</p>
                 </div>
                 <button
                     onClick={() => setModalNuevo(true)}
@@ -73,7 +84,7 @@ export default function ClientesPage() {
 
             <input
                 value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
+                onChange={e => handleBusqueda(e.target.value)}
                 placeholder="Buscar por nombre o teléfono..."
                 className="input"
             />
@@ -82,11 +93,11 @@ export default function ClientesPage() {
                 <div className="space-y-2">
                     {[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-zinc-900 rounded-2xl animate-pulse" />)}
                 </div>
-            ) : ordenados.length === 0 ? (
+            ) : clientes.length === 0 ? (
                 <div className="text-center py-20 text-zinc-500">No hay clientes</div>
             ) : (
                 <div className="space-y-2">
-                    {ordenados.map(c => {
+                    {clientes.map(c => {
                         const total = c.ventas.reduce((s, v) => s + Number(v.precioFinal), 0)
                         const ultima = c.ventas[0]?.fechaVenta
                         const isOpen = detalle?.id === c.id
@@ -194,6 +205,15 @@ export default function ClientesPage() {
                             </div>
                         )
                     })}
+                    {hayMas && (
+                        <button
+                            onClick={cargarMas}
+                            disabled={loadingMas}
+                            className="w-full py-3 border border-white/10 text-zinc-400 text-sm font-bold uppercase rounded-2xl hover:border-white/20 transition-colors disabled:opacity-50"
+                        >
+                            {loadingMas ? 'Cargando...' : `Ver más (${total - clientes.length} restantes)`}
+                        </button>
+                    )}
                 </div>
             )}
 

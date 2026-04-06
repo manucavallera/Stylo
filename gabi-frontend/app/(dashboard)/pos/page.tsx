@@ -45,7 +45,7 @@ function PosInner() {
 
     useEffect(() => {
         cajaApi.hoy().then(setCaja).catch(() => null)
-        clientesApi.listar().then(setClientes).catch(() => null)
+        clientesApi.listar({ take: 500 }).then(res => setClientes(res.items)).catch(() => null)
     }, [])
 
     // Pre-cargar prenda si viene de /prendas

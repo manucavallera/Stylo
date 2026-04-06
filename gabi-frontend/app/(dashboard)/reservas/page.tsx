@@ -39,7 +39,10 @@ function agruparPorCliente(reservas: Reserva[]) {
 
 export default function ReservasPage() {
     const [reservas, setReservas] = useState<Reserva[]>([])
+    const [totalHistorial, setTotalHistorial] = useState(0)
+    const [skipHistorial, setSkipHistorial] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [loadingMas, setLoadingMas] = useState(false)
     const [accionando, setAccionando] = useState<string | null>(null)
     const [error, setError] = useState('')
     const [mostrarModal, setMostrarModal] = useState(false)
@@ -52,13 +55,29 @@ export default function ReservasPage() {
 
     async function cargar() {
         setLoading(true)
-        const fn = tab === 'activas' ? reservasApi.activas() : reservasApi.historial()
-        fn.then(setReservas).finally(() => setLoading(false))
+        setSkipHistorial(0)
+        if (tab === 'activas') {
+            reservasApi.activas().then(setReservas).finally(() => setLoading(false))
+        } else {
+            reservasApi.historial(0).then(res => {
+                setReservas(res.items)
+                setTotalHistorial(res.total)
+            }).finally(() => setLoading(false))
+        }
+    }
+
+    async function cargarMasHistorial() {
+        const nuevoSkip = skipHistorial + 50
+        setLoadingMas(true)
+        reservasApi.historial(nuevoSkip).then(res => {
+            setReservas(prev => [...prev, ...res.items])
+            setSkipHistorial(nuevoSkip)
+        }).finally(() => setLoadingMas(false))
     }
 
     useEffect(() => {
         cargar()
-        clientesApi.listar().then(setClientes).catch(() => null)
+        clientesApi.listar({ take: 500 }).then(res => setClientes(res.items)).catch(() => null)
     }, [tab])
 
     async function confirmar(id: string) {
@@ -114,7 +133,9 @@ export default function ReservasPage() {
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div>
                     <h1 className="text-2xl font-black text-white uppercase">Reservas</h1>
-                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">{reservas.length} {tab === 'activas' ? 'activas' : 'en historial'}</p>
+                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">
+                        {tab === 'activas' ? `${reservas.length} activas` : `${totalHistorial} en historial`}
+                    </p>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={cargar} className="px-4 py-2 border border-white/10 text-zinc-400 text-xs font-bold uppercase rounded-xl hover:border-white/20 transition-colors">Actualizar</button>
@@ -139,7 +160,7 @@ export default function ReservasPage() {
                 <div className="text-center py-20 text-zinc-500">No hay reservas</div>
             ) : tab === 'activas' && grupos ? (
                 <div className="space-y-5">
-                    {grupos.map(grupo => {
+                    {grupos.map((grupo: Reserva[]) => {
                         const cliente = grupo[0].cliente
                         const ids = grupo.map(r => r.id)
                         const total = grupo.reduce((sum, r) => sum + Number(r.prenda?.precioVenta ?? 0), 0)
@@ -173,6 +194,15 @@ export default function ReservasPage() {
             ) : (
                 <div className="space-y-3">
                     {reservas.map(r => <ReservaRow key={r.id} reserva={r} accionando={accionando} esHistorial={tab === 'historial'} onConfirmar={confirmar} onCancelar={cancelar} />)}
+                    {tab === 'historial' && reservas.length < totalHistorial && (
+                        <button
+                            onClick={cargarMasHistorial}
+                            disabled={loadingMas}
+                            className="w-full py-3 border border-white/10 text-zinc-400 text-sm font-bold uppercase rounded-2xl hover:border-white/20 transition-colors disabled:opacity-50"
+                        >
+                            {loadingMas ? 'Cargando...' : `Ver más (${totalHistorial - reservas.length} restantes)`}
+                        </button>
+                    )}
                 </div>
             )}
 

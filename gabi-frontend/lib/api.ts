@@ -41,11 +41,14 @@ export const api = {
     delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
+// ── Tipos genéricos ──────────────────────────────────────────────
+export interface Paginated<T> { items: T[]; total: number; skip: number; take: number }
+
 // ── Endpoints tipados ────────────────────────────────────────────
 export const ventasApi = {
     resumenHoy: () => api.get<ResumenHoy>('/ventas/resumen'),
     hoy: () => api.get<Venta[]>('/ventas/hoy'),
-    huerfanas: () => api.get<Venta[]>('/ventas/huerfanas'),
+    huerfanas: (skip = 0, take = 50) => api.get<Paginated<Venta>>(`/ventas/huerfanas?skip=${skip}&take=${take}`),
     balance: (desde: string, hasta: string) => api.get<BalanceResult>(`/ventas/balance?desde=${desde}&hasta=${hasta}`),
     registrar: (data: NuevaVenta) => api.post<Venta>('/ventas', data),
     anular: (id: string) => api.delete<{ ok: boolean }>(`/ventas/${id}`),
@@ -82,7 +85,7 @@ export const fardosApi = {
 
 export const reservasApi = {
     activas: () => api.get<Reserva[]>('/reservas/activas'),
-    historial: () => api.get<Reserva[]>('/reservas/historial'),
+    historial: (skip = 0, take = 50) => api.get<Paginated<Reserva>>(`/reservas/historial?skip=${skip}&take=${take}`),
     crear: (data: NuevaReserva) => api.post<Reserva>('/reservas', data),
     confirmar: (id: string, data?: { comprobanteUrl?: string }) =>
         api.post(`/reservas/${id}/confirmar`, data ?? {}),
@@ -102,7 +105,14 @@ export const cajaApi = {
 }
 
 export const clientesApi = {
-    listar: () => api.get<ClienteConStats[]>('/clientes'),
+    listar: (params?: { skip?: number; take?: number; buscar?: string }) => {
+        const qs = new URLSearchParams()
+        if (params?.skip !== undefined) qs.set('skip', String(params.skip))
+        if (params?.take !== undefined) qs.set('take', String(params.take))
+        if (params?.buscar) qs.set('buscar', params.buscar)
+        const q = qs.toString()
+        return api.get<Paginated<ClienteConStats>>(`/clientes${q ? '?' + q : ''}`)
+    },
     uno: (id: string) => api.get<ClienteDetalle>(`/clientes/${id}`),
     crear: (data: { nombre: string; telefonoWhatsapp?: string; notas?: string }) =>
         api.post<Cliente>('/clientes', data),

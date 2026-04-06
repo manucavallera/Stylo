@@ -34,14 +34,14 @@ export default function CajaPage() {
         const [resumenData, ventasData, huerfanasData] = await Promise.allSettled([
             ventasApi.resumenHoy(),
             ventasApi.hoy(),
-            ventasApi.huerfanas(),
+            ventasApi.huerfanas(0, 50),
         ])
         if (resumenData.status === 'fulfilled') setResumen(resumenData.value)
         if (ventasData.status === 'fulfilled') setVentas(ventasData.value)
         if (huerfanasData.status === 'fulfilled') {
             // Solo las de días anteriores (hoy ya está en ventas)
             const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-            const pasadas = huerfanasData.value.filter(v => new Date(v.fechaVenta) < hoy)
+            const pasadas = huerfanasData.value.items.filter((v: Venta) => new Date(v.fechaVenta) < hoy)
             setHuerfanas(pasadas)
         }
 
@@ -128,62 +128,22 @@ export default function CajaPage() {
 
             {/* ── Lista de ventas de hoy ── */}
             <div className="space-y-3">
-                <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">Ventas de hoy</h2>
+                <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">
+                    Ventas de hoy {ventas.length > 0 && <span className="text-zinc-600">({ventas.length})</span>}
+                </h2>
                 {ventas.length === 0 ? (
                     <div className="bg-zinc-900 border border-white/5 rounded-2xl p-8 text-center">
                         <p className="text-zinc-600 text-sm">Sin ventas registradas hoy</p>
                     </div>
                 ) : (
-                    <div className="space-y-2">
-                        {ventas.map(v => (
-                            <div key={v.id} className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
-                                {v.prenda.fotos?.[0] ? (
-                                    <img src={v.prenda.fotos[0].url} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                                ) : (
-                                    <span className="text-xl w-10 text-center shrink-0">👕</span>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-white text-sm font-bold truncate">{v.prenda.categoria?.nombre}</p>
-                                    <p className="text-zinc-500 text-xs">
-                                        Talle {v.prenda.talle?.nombre}
-                                        {v.cliente && <span> · {v.cliente.nombre}</span>}
-                                    </p>
-                                </div>
-                                <div className="text-right shrink-0">
-                                    <p className="text-white font-black text-sm">${Number(v.precioFinal).toLocaleString('es-AR')}</p>
-                                    <p className="text-zinc-500 text-xs">
-                                        {METODO_ICON[v.metodoPago]} {new Date(v.fechaVenta).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
-                                </div>
-                                <div className="shrink-0">
-                                    {confirmAnular === v.id ? (
-                                        <div className="flex gap-1">
-                                            <button
-                                                onClick={() => handleAnular(v.id)}
-                                                disabled={anulando === v.id}
-                                                className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs font-black border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50"
-                                            >
-                                                {anulando === v.id ? '...' : 'Sí'}
-                                            </button>
-                                            <button
-                                                onClick={() => setConfirmAnular(null)}
-                                                className="px-2 py-1 rounded-lg border border-white/10 text-zinc-500 text-xs hover:border-white/20"
-                                            >
-                                                No
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => setConfirmAnular(v.id)}
-                                            className="px-2 py-1 rounded-lg border border-white/10 text-zinc-600 text-xs hover:border-red-500/30 hover:text-red-400 transition-colors"
-                                        >
-                                            Anular
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <VentasHoyLista
+                        ventas={ventas}
+                        onAnular={handleAnular}
+                        confirmAnular={confirmAnular}
+                        setConfirmAnular={setConfirmAnular}
+                        anulando={anulando}
+                        metodoIcon={METODO_ICON}
+                    />
                 )}
             </div>
 
@@ -323,6 +283,72 @@ export default function CajaPage() {
             )}
             {modalGasto && caja && (
                 <ModalGasto cajaId={caja.id} onClose={() => setModalGasto(false)} onGuardado={() => { setModalGasto(false); toast('Salida registrada'); cargar() }} />
+            )}
+        </div>
+    )
+}
+
+const LIMITE_VENTAS_HOY = 15
+
+function VentasHoyLista({ ventas, onAnular, confirmAnular, setConfirmAnular, anulando, metodoIcon }: {
+    ventas: Venta[]
+    onAnular: (id: string) => void
+    confirmAnular: string | null
+    setConfirmAnular: (id: string | null) => void
+    anulando: string | null
+    metodoIcon: Record<string, string>
+}) {
+    const [expandido, setExpandido] = useState(false)
+    const visibles = expandido ? ventas : ventas.slice(0, LIMITE_VENTAS_HOY)
+
+    return (
+        <div className="space-y-2">
+            {visibles.map(v => (
+                <div key={v.id} className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
+                    {v.prenda.fotos?.[0] ? (
+                        <img src={v.prenda.fotos[0].url} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                    ) : (
+                        <span className="text-xl w-10 text-center shrink-0">👕</span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-bold truncate">{v.prenda.categoria?.nombre}</p>
+                        <p className="text-zinc-500 text-xs">
+                            Talle {v.prenda.talle?.nombre}
+                            {v.cliente && <span> · {v.cliente.nombre}</span>}
+                        </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <p className="text-white font-black text-sm">${Number(v.precioFinal).toLocaleString('es-AR')}</p>
+                        <p className="text-zinc-500 text-xs">
+                            {metodoIcon[v.metodoPago]} {new Date(v.fechaVenta).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                    </div>
+                    <div className="shrink-0">
+                        {confirmAnular === v.id ? (
+                            <div className="flex gap-1">
+                                <button onClick={() => onAnular(v.id)} disabled={anulando === v.id}
+                                    className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs font-black border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50">
+                                    {anulando === v.id ? '...' : 'Sí'}
+                                </button>
+                                <button onClick={() => setConfirmAnular(null)}
+                                    className="px-2 py-1 rounded-lg border border-white/10 text-zinc-500 text-xs hover:border-white/20">
+                                    No
+                                </button>
+                            </div>
+                        ) : (
+                            <button onClick={() => setConfirmAnular(v.id)}
+                                className="px-2 py-1 rounded-lg border border-white/10 text-zinc-600 text-xs hover:border-red-500/30 hover:text-red-400 transition-colors">
+                                Anular
+                            </button>
+                        )}
+                    </div>
+                </div>
+            ))}
+            {ventas.length > LIMITE_VENTAS_HOY && (
+                <button onClick={() => setExpandido(e => !e)}
+                    className="w-full text-center text-zinc-500 text-xs font-bold uppercase py-2 hover:text-zinc-300 transition-colors border border-white/5 rounded-xl">
+                    {expandido ? '▲ Mostrar menos' : `▼ Ver todas (${ventas.length - LIMITE_VENTAS_HOY} más)`}
+                </button>
             )}
         </div>
     )

@@ -26,7 +26,7 @@ export default function DashboardPage() {
             if (reservas.status === 'fulfilled') setReservasCount(reservas.value.length)
             if (st.status === 'fulfilled') setStats(st.value)
             if (huerfanas.status === 'fulfilled') {
-                const pasadas = huerfanas.value.filter(v => new Date(v.fechaVenta) < hoy)
+                const pasadas = huerfanas.value.items.filter((v: any) => new Date(v.fechaVenta) < hoy)
                 setHuerfanasCount(pasadas.length)
             }
             setLoading(false)
