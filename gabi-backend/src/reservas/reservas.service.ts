@@ -486,7 +486,7 @@ export class ReservasService {
                 const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
                 confirmadas.push({ desc, precio: Number(reserva.prenda.precioVenta) });
             }
-        });
+        }, { timeout: 30000, maxWait: 10000 });
 
         if (confirmadas.length === 0) throw new BadRequestException('No se pudo confirmar ninguna reserva');
 
