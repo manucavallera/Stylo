@@ -31,6 +31,7 @@ function PrendasInner() {
     const [loadingMas, setLoadingMas] = useState(false)
     const [hasMore, setHasMore] = useState(false)
     const [filtroEstado, setFiltroEstado] = useState(estadoUrl ?? (fardoId ? '' : 'DISPONIBLE'))
+    const [filtroSinFoto, setFiltroSinFoto] = useState(false)
     const [editando, setEditando] = useState<Prenda | null>(null)
     const skipRef = useRef(0)
 
@@ -42,6 +43,7 @@ function PrendasInner() {
         const params: Record<string, string> = { take: String(TAKE), skip: String(currentSkip) }
         if (filtroEstado) params.estado = filtroEstado
         if (fardoId) params.fardoId = fardoId
+        if (filtroSinFoto) { params.sinFoto = 'true'; params.estado = 'DISPONIBLE' }
 
         try {
             const result = await prendasApi.listar(params)
@@ -57,6 +59,7 @@ function PrendasInner() {
 
     function cambiarEstado(e: string) {
         setFiltroEstado(e)
+        setFiltroSinFoto(false)
         skipRef.current = 0
         const params = new URLSearchParams()
         if (fardoId) params.set('fardoId', fardoId)
@@ -64,7 +67,12 @@ function PrendasInner() {
         router.replace(`/prendas?${params.toString()}`, { scroll: false })
     }
 
-    useEffect(() => { cargar(true) }, [filtroEstado, fardoId])
+    function toggleSinFoto() {
+        setFiltroSinFoto(v => !v)
+        skipRef.current = 0
+    }
+
+    useEffect(() => { cargar(true) }, [filtroEstado, filtroSinFoto, fardoId])
 
     async function handleEliminar(id: string) {
         if (!confirm('¿Eliminar esta prenda? Esta acción no se puede deshacer.')) return
@@ -97,7 +105,7 @@ function PrendasInner() {
                     <button
                         key={e}
                         onClick={() => cambiarEstado(e)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-all ${filtroEstado === e
+                        className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-all ${!filtroSinFoto && filtroEstado === e
                             ? (ESTADO_COLORS[e] || 'bg-white/10 text-white border-white/20')
                             : 'border-white/10 text-zinc-400 hover:border-white/20 hover:text-white'
                         }`}
@@ -105,6 +113,15 @@ function PrendasInner() {
                         {ESTADO_LABELS[e] || e}
                     </button>
                 ))}
+                <button
+                    onClick={toggleSinFoto}
+                    className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-all ${filtroSinFoto
+                        ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                        : 'border-white/10 text-zinc-400 hover:border-white/20 hover:text-white'
+                    }`}
+                >
+                    Sin foto
+                </button>
             </div>
 
             {loading ? (

@@ -117,7 +117,7 @@ export default function ClientesPage() {
                                         <p className="text-zinc-500 text-xs">
                                             {c.telefonoWhatsapp
                                                 ? <a href={`https://wa.me/${c.telefonoWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-emerald-400 transition-colors">{c.telefonoWhatsapp}</a>
-                                                : 'Sin teléfono'
+                                                : <span className="text-amber-500/70">⚠ Sin teléfono</span>
                                             }
                                         </p>
                                     </div>

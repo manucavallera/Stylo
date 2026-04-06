@@ -78,9 +78,20 @@ function PosInner() {
         setPrenda(null)
         try {
             const p = await prendasApi.porQr(qrInput.trim())
+            if (p.estado === 'VENDIDO') {
+                setError('Esta prenda ya fue vendida')
+                return
+            }
+            if (p.estado === 'RETIRADO') {
+                setError('Esta prenda fue retirada del stock')
+                return
+            }
+            if (p.estado === 'RESERVADO') {
+                setError('⚠ Esta prenda tiene una reserva activa — confirmá la reserva desde /reservas o vendela igual')
+            }
             seleccionarPrenda(p)
         } catch {
-            setError('QR no encontrado o prenda no disponible')
+            setError('QR no encontrado')
         }
     }
 

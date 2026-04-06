@@ -319,6 +319,31 @@ export default function BalancePage() {
                         </div>
                     )}
 
+                    {/* Salidas (gastos + retiros) */}
+                    {(balance.totalGastos > 0 || balance.totalRetiros > 0) && (
+                        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5 space-y-3">
+                            <p className="text-zinc-500 text-xs uppercase tracking-widest font-black">Salidas del período</p>
+                            {balance.totalGastos > 0 && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-zinc-400 text-sm">Gastos</span>
+                                    <span className="text-red-400 font-black">−${balance.totalGastos.toLocaleString('es-AR')}</span>
+                                </div>
+                            )}
+                            {balance.totalRetiros > 0 && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-zinc-400 text-sm">Retiros</span>
+                                    <span className="text-amber-400 font-black">−${balance.totalRetiros.toLocaleString('es-AR')}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                                <span className="text-zinc-300 text-sm font-bold">Neto estimado</span>
+                                <span className={`font-black text-lg ${balance.totalVendido - balance.totalGastos - balance.totalRetiros >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    ${(balance.totalVendido - balance.totalGastos - balance.totalRetiros).toLocaleString('es-AR')}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Detalle de ventas — lazy */}
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">

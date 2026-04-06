@@ -31,6 +31,7 @@ export class PrendasService {
         talleId?: string;
         fardoId?: string;
         search?: string;
+        sinFoto?: boolean;
         skip?: number;
         take?: number;
     }) {
@@ -48,6 +49,7 @@ export class PrendasService {
                 ...(filters?.categoriaId && { categoriaId: filters.categoriaId }),
                 ...(filters?.talleId && { talleId: filters.talleId }),
                 ...(filters?.fardoId && { fardoId: filters.fardoId }),
+                ...(filters?.sinFoto && { fotos: { none: {} } }),
                 ...searchConditions,
             },
             include: {

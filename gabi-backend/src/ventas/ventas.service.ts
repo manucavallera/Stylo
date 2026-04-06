@@ -166,7 +166,7 @@ export class VentasService {
         fechaHasta.setHours(23, 59, 59, 999);
         const where = { fechaVenta: { gte: fechaDesde, lte: fechaHasta } };
 
-        const [totales, porMetodo, porCategoria] = await Promise.all([
+        const [totales, porMetodo, porCategoria, gastos] = await Promise.all([
             this.prisma.venta.aggregate({
                 where,
                 _sum: { precioFinal: true },
@@ -186,6 +186,11 @@ export class VentasService {
                     prenda: { select: { categoria: { select: { nombre: true } } } },
                 },
             }),
+            // Gastos y retiros de cajas en el período
+            this.prisma.gastoCaja.findMany({
+                where: { cajaDiaria: { fecha: { gte: fechaDesde, lte: fechaHasta } } },
+                select: { monto: true, tipo: true, concepto: true },
+            }),
         ]);
 
         const totalVendido = Number(totales._sum.precioFinal ?? 0);
@@ -203,6 +208,9 @@ export class VentasService {
             .map(([nombre, data]) => ({ nombre, ...data }))
             .sort((a, b) => b.total - a.total);
 
+        const totalGastos = gastos.filter(g => g.tipo === 'GASTO').reduce((s, g) => s + Number(g.monto), 0);
+        const totalRetiros = gastos.filter(g => g.tipo === 'RETIRO').reduce((s, g) => s + Number(g.monto), 0);
+
         return {
             desde: fechaDesde.toISOString(),
             hasta: fechaHasta.toISOString(),
@@ -210,6 +218,8 @@ export class VentasService {
             totalVendido,
             porMetodoPago: porMetodo,
             porCategoria: porCategoriaSorted,
+            totalGastos,
+            totalRetiros,
         };
     }
 

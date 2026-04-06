@@ -21,9 +21,18 @@ const navItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [botStatus, setBotStatus] = useState<'ok' | 'error' | 'unknown'>('unknown')
     const pathname = usePathname()
     const router = useRouter()
     const supabase = createClient()
+
+    useEffect(() => {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
+        fetch(`${API_URL}/health`)
+            .then(r => r.json())
+            .then(d => setBotStatus(d?.checks?.evolution?.status === 'ok' ? 'ok' : 'error'))
+            .catch(() => setBotStatus('error'))
+    }, [])
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -115,6 +124,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         )
                     })}
                 </nav>
+
+                {/* Estado bot WhatsApp */}
+                <div className="px-4 pb-2">
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${botStatus === 'ok' ? 'bg-emerald-500/5 border border-emerald-500/15' : botStatus === 'error' ? 'bg-red-500/5 border border-red-500/15' : 'bg-zinc-900 border border-white/5'}`}>
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${botStatus === 'ok' ? 'bg-emerald-400' : botStatus === 'error' ? 'bg-red-400 animate-pulse' : 'bg-zinc-600'}`} />
+                        <span className={`font-semibold uppercase tracking-wide ${botStatus === 'ok' ? 'text-emerald-400' : botStatus === 'error' ? 'text-red-400' : 'text-zinc-600'}`}>
+                            {botStatus === 'ok' ? 'Bot conectado' : botStatus === 'error' ? 'Bot desconectado' : 'Verificando bot...'}
+                        </span>
+                    </div>
+                </div>
 
                 {/* Catálogo + Logout */}
                 <div className="p-4 border-t border-white/5 space-y-0.5">

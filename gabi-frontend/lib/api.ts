@@ -181,6 +181,8 @@ export interface BalanceResult {
     totalVendido: number
     porMetodoPago: { metodoPago: string; _sum: { precioFinal: number }; _count: number }[]
     porCategoria: { nombre: string; total: number; cantidad: number }[]
+    totalGastos: number
+    totalRetiros: number
 }
 export interface Caja { id: string; fecha: string; montoApertura: number; montoEsperado: number; montoReal?: number; diferencia?: number; estado: string; gastos?: GastoCaja[] }
 export interface Cliente { id: string; nombre: string; telefonoWhatsapp?: string; notas?: string }
