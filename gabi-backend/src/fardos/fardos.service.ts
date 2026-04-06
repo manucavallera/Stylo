@@ -44,14 +44,20 @@ export class FardosService {
         });
     }
 
-    // ── Historial de fardos cerrados ─────────────────────────────
-    findHistorial() {
-        return this.prisma.fardo.findMany({
-            where: { estado: 'CERRADO' },
-            include: { proveedor: true },
-            orderBy: { updatedAt: 'desc' },
-            take: 30,
-        });
+    // ── Historial de fardos cerrados (paginado) ──────────────────
+    async findHistorial(skip = 0, take = 20) {
+        const where = { estado: 'CERRADO' as const };
+        const [items, total] = await Promise.all([
+            this.prisma.fardo.findMany({
+                where,
+                include: { proveedor: true },
+                orderBy: { updatedAt: 'desc' },
+                skip,
+                take,
+            }),
+            this.prisma.fardo.count({ where }),
+        ]);
+        return { items, total, skip, take };
     }
 
     // ── Cerrar fardo ─────────────────────────────────────────────

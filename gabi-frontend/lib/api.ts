@@ -80,7 +80,7 @@ export const fardosApi = {
     publicarAlGrupo: (id: string, body?: { sinFoto?: boolean }) => api.post<{ enviadas: number; sinFoto: number; errores: string[] }>(`/fardos/${id}/publicar-grupo`, body ?? {}),
     publicarPrendaAlGrupo: (id: string) => api.post(`/prendas/${id}/publicar-grupo`, {}),
     roi: (id: string) => api.get<RoiFardo>(`/fardos/${id}/roi`),
-    historial: () => api.get<Fardo[]>('/fardos/historial'),
+    historial: (skip = 0, take = 20) => api.get<Paginated<Fardo>>(`/fardos/historial?skip=${skip}&take=${take}`),
     cerrar: (id: string) => api.post(`/fardos/${id}/cerrar`, {}),
     eliminar: (id: string) => api.delete(`/fardos/${id}`),
 }
@@ -101,7 +101,7 @@ export const cajaApi = {
     abrir: (montoApertura: number) => api.post<Caja>('/caja/abrir', { montoApertura }),
     cerrar: (id: string, montoReal: number) =>
         api.post<Caja>(`/caja/${id}/cerrar`, { montoReal }),
-    historial: () => api.get<Caja[]>('/caja'),
+    historial: (skip = 0, take = 14) => api.get<Paginated<Caja>>(`/caja?skip=${skip}&take=${take}`),
     registrarGasto: (cajaId: string, data: { concepto: string; monto: number; tipo?: 'GASTO' | 'RETIRO' }) =>
         api.post<GastoCaja>(`/caja/${cajaId}/gasto`, data),
 }

@@ -14,6 +14,9 @@ const ESTADO_COLORS: Record<string, string> = {
 export default function FardosPage() {
     const [fardos, setFardos] = useState<Fardo[]>([])
     const [historial, setHistorial] = useState<Fardo[]>([])
+    const [totalHistorial, setTotalHistorial] = useState(0)
+    const [skipHistorial, setSkipHistorial] = useState(0)
+    const [loadingMasHistorial, setLoadingMasHistorial] = useState(false)
     const [loading, setLoading] = useState(true)
     const [modalNuevo, setModalNuevo] = useState(false)
     const [fardoAbriendo, setFardoAbriendo] = useState<Fardo | null>(null)
@@ -23,9 +26,26 @@ export default function FardosPage() {
 
     async function cargar() {
         setLoading(true)
-        Promise.all([fardosApi.listar(), fardosApi.historial()])
-            .then(([activos, cerrados]) => { setFardos(activos); setHistorial(cerrados) })
+        setSkipHistorial(0)
+        Promise.all([fardosApi.listar(), fardosApi.historial(0)])
+            .then(([activos, cerradosRes]) => {
+                setFardos(activos)
+                setHistorial(cerradosRes.items)
+                setTotalHistorial(cerradosRes.total)
+            })
             .finally(() => setLoading(false))
+    }
+
+    async function cargarMasHistorial() {
+        const nuevoSkip = skipHistorial + 20
+        setLoadingMasHistorial(true)
+        try {
+            const res = await fardosApi.historial(nuevoSkip)
+            setHistorial(prev => [...prev, ...res.items])
+            setSkipHistorial(nuevoSkip)
+        } finally {
+            setLoadingMasHistorial(false)
+        }
     }
 
     async function handleCerrar(fardo: Fardo) {
@@ -98,9 +118,11 @@ export default function FardosPage() {
                 </div>
             )}
 
-            {historial.length > 0 && (
+            {(historial.length > 0 || totalHistorial > 0) && (
                 <div className="space-y-3">
-                    <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">Historial de fardos cerrados</h2>
+                    <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">
+                        Historial de fardos cerrados {totalHistorial > 0 && <span className="text-zinc-600">({totalHistorial})</span>}
+                    </h2>
                     <div className="space-y-2">
                         {historial.map(f => (
                             <div key={f.id} className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
@@ -112,6 +134,15 @@ export default function FardosPage() {
                             </div>
                         ))}
                     </div>
+                    {historial.length < totalHistorial && (
+                        <button
+                            onClick={cargarMasHistorial}
+                            disabled={loadingMasHistorial}
+                            className="w-full text-center text-zinc-500 text-xs font-bold uppercase py-2 hover:text-zinc-300 transition-colors border border-white/5 rounded-xl disabled:opacity-50"
+                        >
+                            {loadingMasHistorial ? 'Cargando...' : `Ver más (${totalHistorial - historial.length} restantes)`}
+                        </button>
+                    )}
                 </div>
             )}
 

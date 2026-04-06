@@ -167,11 +167,18 @@ export class CajaService {
         });
     }
 
-    // ── Historial de cajas ───────────────────────────────────────
-    findAll() {
-        return this.prisma.cajaDiaria.findMany({
-            orderBy: { fecha: 'desc' },
-            take: 30,
-        });
+    // ── Historial de cajas (paginado) ────────────────────────────
+    async findAll(skip = 0, take = 14) {
+        const where = { estado: 'CERRADA' as const };
+        const [items, total] = await Promise.all([
+            this.prisma.cajaDiaria.findMany({
+                where,
+                orderBy: { fecha: 'desc' },
+                skip,
+                take,
+            }),
+            this.prisma.cajaDiaria.count({ where }),
+        ]);
+        return { items, total, skip, take };
     }
 }

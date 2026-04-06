@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query } from '@nestjs/common';
 import { FardosService } from './fardos.service';
 import { CreateFardoDto } from './dto/create-fardo.dto';
 import { AbrirFardoDto } from './dto/abrir-fardo.dto';
@@ -21,8 +21,11 @@ export class FardosController {
 
     // GET /api/v1/fardos/historial — fardos cerrados (debe ir ANTES de :id)
     @Get('historial')
-    findHistorial() {
-        return this.fardosService.findHistorial();
+    findHistorial(@Query('skip') skip?: string, @Query('take') take?: string) {
+        return this.fardosService.findHistorial(
+            skip ? parseInt(skip) : 0,
+            take ? parseInt(take) : 20,
+        );
     }
 
     // GET /api/v1/fardos/:id — ver fardo con sus prendas

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, HttpCode, Query } from '@nestjs/common';
 import { CajaService } from './caja.service';
 import { AbrirCajaDto, CerrarCajaDto, RegistrarGastoDto } from './dto/caja.dto';
 
@@ -17,8 +17,11 @@ export class CajaController {
     }
 
     @Get()
-    findAll() {
-        return this.cajaService.findAll();
+    findAll(@Query('skip') skip?: string, @Query('take') take?: string) {
+        return this.cajaService.findAll(
+            skip ? parseInt(skip) : 0,
+            take ? parseInt(take) : 14,
+        );
     }
 
     @Post(':id/cerrar')

@@ -22,6 +22,9 @@ export default function CajaPage() {
     const [caja, setCaja] = useState<Caja | null>(null)
     const [sinCaja, setSinCaja] = useState(false)
     const [historial, setHistorial] = useState<Caja[]>([])
+    const [totalHistorial, setTotalHistorial] = useState(0)
+    const [skipHistorial, setSkipHistorial] = useState(0)
+    const [loadingMasHistorial, setLoadingMasHistorial] = useState(false)
     const [loading, setLoading] = useState(true)
     const [anulando, setAnulando] = useState<string | null>(null)
     const [confirmAnular, setConfirmAnular] = useState<string | null>(null)
@@ -55,14 +58,28 @@ export default function CajaPage() {
         }
 
         try {
-            const hist = await cajaApi.historial()
-            setHistorial(hist.filter((c: Caja) => c.estado === 'CERRADA'))
+            const hist = await cajaApi.historial(0)
+            setHistorial(hist.items)
+            setTotalHistorial(hist.total)
+            setSkipHistorial(0)
         } catch {}
 
         setLoading(false)
     }, [])
 
     useEffect(() => { cargar() }, [cargar])
+
+    async function cargarMasHistorial() {
+        const nuevoSkip = skipHistorial + 14
+        setLoadingMasHistorial(true)
+        try {
+            const res = await cajaApi.historial(nuevoSkip)
+            setHistorial(prev => [...prev, ...res.items])
+            setSkipHistorial(nuevoSkip)
+        } finally {
+            setLoadingMasHistorial(false)
+        }
+    }
 
     async function handleAnular(id: string) {
         setAnulando(id)
@@ -253,9 +270,11 @@ export default function CajaPage() {
             )}
 
             {/* ── Historial ── */}
-            {historial.length > 0 && (
+            {(historial.length > 0 || totalHistorial > 0) && (
                 <div className="space-y-3">
-                    <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">Historial de cajas</h2>
+                    <h2 className="text-zinc-500 text-xs uppercase tracking-widest font-black">
+                        Historial de cajas {totalHistorial > 0 && <span className="text-zinc-600">({totalHistorial})</span>}
+                    </h2>
                     <div className="space-y-2">
                         {historial.map(c => (
                             <div key={c.id} className="bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
@@ -276,6 +295,15 @@ export default function CajaPage() {
                             </div>
                         ))}
                     </div>
+                    {historial.length < totalHistorial && (
+                        <button
+                            onClick={cargarMasHistorial}
+                            disabled={loadingMasHistorial}
+                            className="w-full text-center text-zinc-500 text-xs font-bold uppercase py-2 hover:text-zinc-300 transition-colors border border-white/5 rounded-xl disabled:opacity-50"
+                        >
+                            {loadingMasHistorial ? 'Cargando...' : `Ver más (${totalHistorial - historial.length} restantes)`}
+                        </button>
+                    )}
                 </div>
             )}
 
