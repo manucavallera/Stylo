@@ -64,9 +64,9 @@ export default function DashboardPage() {
                     accent loading={loading} icon="💸"
                 />
                 <KpiCard
-                    label="Ganancia estimada"
-                    value={resumen ? `$${Number(resumen.gananciaEstimada).toLocaleString('es-AR')}` : '—'}
-                    sub="precio − costo"
+                    label="Ticket promedio"
+                    value={resumen && resumen.cantidadVentas > 0 ? `$${Math.round(resumen.totalVendido / resumen.cantidadVentas).toLocaleString('es-AR')}` : '—'}
+                    sub={`${resumen?.cantidadVentas ?? 0} venta${(resumen?.cantidadVentas ?? 0) !== 1 ? 's' : ''}`}
                     loading={loading} icon="📈"
                 />
                 <KpiCard
