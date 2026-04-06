@@ -160,7 +160,7 @@ export default function CajaPage() {
                                     </div>
                                 )}
                             </div>
-                            {caja.estado === 'ABIERTA' && (
+                            {caja.estado === 'ABIERTA' ? (
                                 <div className="flex flex-col gap-2">
                                     <button onClick={() => setModalGasto(true)} className="px-4 py-2 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-orange-500/30 hover:text-orange-400 transition-colors">
                                         + Gasto
@@ -169,6 +169,10 @@ export default function CajaPage() {
                                         Cerrar
                                     </button>
                                 </div>
+                            ) : (
+                                <button onClick={() => setModalAbrir(true)} className="px-4 py-2 bg-zinc-800 border border-white/10 text-zinc-300 font-black text-xs uppercase rounded-xl hover:border-emerald-500/30 hover:text-emerald-400 transition-colors">
+                                    Reabrir
+                                </button>
                             )}
                         </div>
 
