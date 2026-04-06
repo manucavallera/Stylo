@@ -188,7 +188,7 @@ export class VentasService {
             }),
             // Gastos y retiros de cajas en el período
             this.prisma.gastoCaja.findMany({
-                where: { cajaDiaria: { fecha: { gte: fechaDesde, lte: fechaHasta } } },
+                where: { caja: { fecha: { gte: fechaDesde, lte: fechaHasta } } },
                 select: { monto: true, tipo: true, concepto: true },
             }),
         ]);
