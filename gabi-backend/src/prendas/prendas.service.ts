@@ -104,6 +104,8 @@ export class PrendasService {
             throw new BadRequestException('No se puede eliminar una prenda que ya fue vendida');
         }
         await this.prisma.$transaction([
+            this.prisma.carritoBot.deleteMany({ where: { prendaId: id } }),
+            this.prisma.reserva.deleteMany({ where: { prendaId: id } }),
             this.prisma.prenda.delete({ where: { id } }),
             this.prisma.fardo.update({
                 where: { id: prenda.fardoId },
