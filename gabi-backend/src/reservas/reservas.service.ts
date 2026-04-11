@@ -37,18 +37,33 @@ export class ReservasService {
         }
     }
 
-    private async analizarComprobante(imageUrl: string, precioPrenda: number) {
+    private async analizarComprobante(
+        imageSource: { url: string } | { base64: string; mimeType?: string },
+        precioPrenda: number,
+    ) {
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) return null;
 
         try {
-            const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
-            if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`);
-            const buffer = await imgRes.arrayBuffer();
-            const base64 = Buffer.from(buffer).toString('base64');
-            const rawType = imgRes.headers.get('content-type') ?? 'image/jpeg';
-            const mediaType = (['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-                .find(t => rawType.includes(t)) ?? 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+            let base64: string;
+            let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+            if ('base64' in imageSource) {
+                // Viene con base64 directo (puede incluir el prefijo data:...)
+                const raw = imageSource.base64.replace(/^data:[^;]+;base64,/, '');
+                base64 = raw;
+                const mt = imageSource.mimeType ?? 'image/jpeg';
+                mediaType = (['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+                    .find(t => mt.includes(t)) ?? 'image/jpeg') as typeof mediaType;
+            } else {
+                const imgRes = await fetch(imageSource.url, { signal: AbortSignal.timeout(10000) });
+                if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`);
+                const buffer = await imgRes.arrayBuffer();
+                base64 = Buffer.from(buffer).toString('base64');
+                const rawType = imgRes.headers.get('content-type') ?? 'image/jpeg';
+                mediaType = (['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+                    .find(t => rawType.includes(t)) ?? 'image/jpeg') as typeof mediaType;
+            }
 
             const client = new Anthropic({ apiKey });
             const response = await client.messages.create({
@@ -380,8 +395,14 @@ export class ReservasService {
         const talle = reserva.prenda.talle?.nombre ?? '';
         const descPrenda = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Prenda';
 
-        const analisis = dto.comprobanteUrl
-            ? await this.analizarComprobante(dto.comprobanteUrl, precio)
+        const imagenSource = dto.comprobanteBase64
+            ? { base64: dto.comprobanteBase64, mimeType: dto.comprobanteMimeType }
+            : dto.comprobanteUrl
+                ? { url: dto.comprobanteUrl }
+                : null;
+
+        const analisis = imagenSource
+            ? await this.analizarComprobante(imagenSource, precio)
             : null;
 
         // Armar WA a Gabi con el análisis

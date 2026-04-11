@@ -40,4 +40,12 @@ export class ConfirmarPorBotDto {
     @IsString()
     @IsOptional()
     comprobanteUrl?: string;
+
+    @IsString()
+    @IsOptional()
+    comprobanteBase64?: string; // base64 de la imagen (obtenido vía Evolution API)
+
+    @IsString()
+    @IsOptional()
+    comprobanteMimeType?: string;
 }

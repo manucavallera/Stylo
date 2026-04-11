@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parsear webhook de Evolution API\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\nconst nombreCliente = data.pushName || null;\n\n// Decodificar código invisible (\\u200B=0, \\u200C=1, 4 bits por hex char)\nfunction decodeInvisible(text) {\n  const zwChars = [...text].filter(c => c === '\\u200B' || c === '\\u200C');\n  if (zwChars.length < 32) return null;\n  const bits = zwChars.slice(0, 32).map(c => c === '\\u200B' ? '0' : '1').join('');\n  let hex = '';\n  for (let i = 0; i < 32; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);\n  return hex;\n}\n\n// Caso 1: imagen con código invisible → agregar al carrito\nconst prendaId = decodeInvisible(caption);\nif (prendaId) {\n  return [{ json: { tipo: 'carrito_agregar', prendaId, telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 2: texto LISTO → confirmar todas las reservas del carrito\nconst textoNorm = caption.trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nif (textoNorm === 'LISTO') {\n  return [{ json: { tipo: 'carrito_confirmar', telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 3: imagen sin código → comprobante de pago\nif (message.imageMessage) {\n  const mediaUrl = message.imageMessage?.url || null;\n  return [{ json: { tipo: 'comprobante', telefono, remoteJid, mediaUrl } }];\n}\n\n// Cualquier otro mensaje: ignorar\nreturn [];"
+        "jsCode": "// Parsear webhook de Evolution API\nconst body = $json.body || $json;\nconst data = body.data || body;\n\n// Ignorar mensajes propios\nif (data.key?.fromMe === true) return [];\n\n// Solo chats privados (no grupos)\nconst remoteJid = data.key?.remoteJid || '';\nif (!remoteJid || remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast')) return [];\n\nconst message = data.message || {};\nconst caption =\n  message.imageMessage?.caption ||\n  message.extendedTextMessage?.text ||\n  message.conversation || '';\n\nconst telefono = remoteJid.replace('@s.whatsapp.net', '');\nconst nombreCliente = data.pushName || null;\n\n// Decodificar código invisible (\\u200B=0, \\u200C=1, 4 bits por hex char)\nfunction decodeInvisible(text) {\n  const zwChars = [...text].filter(c => c === '\\u200B' || c === '\\u200C');\n  if (zwChars.length < 32) return null;\n  const bits = zwChars.slice(0, 32).map(c => c === '\\u200B' ? '0' : '1').join('');\n  let hex = '';\n  for (let i = 0; i < 32; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);\n  return hex;\n}\n\n// Caso 1: imagen con código invisible → agregar al carrito\nconst prendaId = decodeInvisible(caption);\nif (prendaId) {\n  return [{ json: { tipo: 'carrito_agregar', prendaId, telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 2: texto LISTO → confirmar todas las reservas del carrito\nconst textoNorm = caption.trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nif (textoNorm === 'LISTO') {\n  return [{ json: { tipo: 'carrito_confirmar', telefono, remoteJid, nombreCliente } }];\n}\n\n// Caso 3: imagen sin código → comprobante de pago\nif (message.imageMessage) {\n  return [{ json: {\n    tipo: 'comprobante',\n    telefono,\n    remoteJid,\n    mediaUrl: message.imageMessage?.url || null,\n    messageKey: data.key,\n    imageMessageData: message.imageMessage\n  } }];\n}\n\n// Cualquier otro mensaje: ignorar\nreturn [];"
       },
       "id": "c1b2c3d4-0002-0002-0002-000000000001",
       "name": "Parsear Mensaje",
@@ -180,12 +180,34 @@
     {
       "parameters": {
         "method": "POST",
+        "url": "http://manu-evolution-api:8080/chat/getBase64FromMediaMessage/manu",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "429683C4C977415CAAFCCE10F7D57E11" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: { key: $json.messageKey, message: { imageMessage: $json.imageMessageData } }, convertToMp4: false }) }}",
+        "options": {}
+      },
+      "id": "c1b2c3d4-0019-0019-0019-000000000001",
+      "name": "Fetch Media Base64",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 680],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
         "url": "http://manu-stylobackend:3001/api/v1/reservas/recibir-comprobante",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "telefonoWhatsapp", "value": "={{ $json.telefono }}" },
-            { "name": "comprobanteUrl", "value": "={{ $json.mediaUrl }}" }
+            { "name": "telefonoWhatsapp", "value": "={{ $('Parsear Mensaje').first().json.telefono }}" },
+            { "name": "comprobanteUrl", "value": "={{ $('Parsear Mensaje').first().json.mediaUrl }}" },
+            { "name": "comprobanteBase64", "value": "={{ $json.base64 ?? '' }}" },
+            { "name": "comprobanteMimeType", "value": "={{ $json.mimetype ?? 'image/jpeg' }}" }
           ]
         },
         "options": {}
@@ -194,7 +216,7 @@
       "name": "Guardar Comprobante",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 680],
+      "position": [1340, 680],
       "continueOnFail": true
     },
     {
@@ -205,7 +227,7 @@
       "name": "Formatear Acuse Comprobante",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 680]
+      "position": [1560, 680]
     },
     {
       "parameters": {
@@ -228,7 +250,7 @@
       "name": "WhatsApp - Acuse Comprobante",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 680]
+      "position": [1780, 680]
     }
   ],
   "connections": {
@@ -253,7 +275,7 @@
     "¿Confirmar Carrito o Comprobante?": {
       "main": [
         [{ "node": "Confirmar Carrito", "type": "main", "index": 0 }],
-        [{ "node": "Guardar Comprobante", "type": "main", "index": 0 }]
+        [{ "node": "Fetch Media Base64", "type": "main", "index": 0 }]
       ]
     },
     "Confirmar Carrito": {
@@ -261,6 +283,9 @@
     },
     "Formatear Confirmación Carrito": {
       "main": [[{ "node": "WhatsApp - Confirmación Carrito", "type": "main", "index": 0 }]]
+    },
+    "Fetch Media Base64": {
+      "main": [[{ "node": "Guardar Comprobante", "type": "main", "index": 0 }]]
     },
     "Guardar Comprobante": {
       "main": [[{ "node": "Formatear Acuse Comprobante", "type": "main", "index": 0 }]]
@@ -274,6 +299,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-04-04T00:00:00.000Z",
-  "versionId": "gabi-bot-reservas-v5"
+  "updatedAt": "2026-04-11T00:00:00.000Z",
+  "versionId": "gabi-bot-reservas-v6"
 }
