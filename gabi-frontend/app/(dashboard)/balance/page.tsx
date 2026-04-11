@@ -291,32 +291,7 @@ export default function BalancePage() {
 
                     {/* Por categoría */}
                     {balance.porCategoria.length > 0 && (
-                        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
-                            <p className="text-zinc-500 text-xs uppercase tracking-widest font-black mb-4">Por categoría</p>
-                            <div className="space-y-2">
-                                {balance.porCategoria.slice(0, 8).map(cat => {
-                                    const pct = balance.totalVendido > 0 ? (cat.total / balance.totalVendido) * 100 : 0
-                                    return (
-                                        <div key={cat.nombre}>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-zinc-300 text-sm font-bold">{cat.nombre}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-zinc-600 text-xs">{cat.cantidad} u.</span>
-                                                    <span className="text-white font-black text-sm">${cat.total.toLocaleString('es-AR')}</span>
-                                                    <span className="text-zinc-600 text-xs w-8 text-right">{pct.toFixed(0)}%</span>
-                                                </div>
-                                            </div>
-                                            <div className="w-full bg-zinc-800 rounded-full h-1">
-                                                <div className="h-1 rounded-full bg-orange-500/60 transition-all" style={{ width: `${pct}%` }} />
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                                {balance.porCategoria.length > 8 && (
-                                    <p className="text-zinc-600 text-xs pt-1">+{balance.porCategoria.length - 8} categorías más</p>
-                                )}
-                            </div>
-                        </div>
+                        <BalancePorCategoria categorias={balance.porCategoria} totalVendido={balance.totalVendido} />
                     )}
 
                     {/* Salidas (gastos + retiros) */}
@@ -400,6 +375,47 @@ export default function BalancePage() {
                     </div>
                 </>
             )}
+        </div>
+    )
+}
+
+const LIMITE_CATEGORIAS = 8
+
+function BalancePorCategoria({ categorias, totalVendido }: { categorias: { nombre: string; total: number; cantidad: number }[]; totalVendido: number }) {
+    const [expandido, setExpandido] = useState(false)
+    const visibles = expandido ? categorias : categorias.slice(0, LIMITE_CATEGORIAS)
+
+    return (
+        <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
+            <p className="text-zinc-500 text-xs uppercase tracking-widest font-black mb-4">Por categoría</p>
+            <div className="space-y-2">
+                {visibles.map(cat => {
+                    const pct = totalVendido > 0 ? (cat.total / totalVendido) * 100 : 0
+                    return (
+                        <div key={cat.nombre}>
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-zinc-300 text-sm font-bold">{cat.nombre}</span>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-zinc-600 text-xs">{cat.cantidad} u.</span>
+                                    <span className="text-white font-black text-sm">${cat.total.toLocaleString('es-AR')}</span>
+                                    <span className="text-zinc-600 text-xs w-8 text-right">{pct.toFixed(0)}%</span>
+                                </div>
+                            </div>
+                            <div className="w-full bg-zinc-800 rounded-full h-1">
+                                <div className="h-1 rounded-full bg-orange-500/60 transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                        </div>
+                    )
+                })}
+                {categorias.length > LIMITE_CATEGORIAS && (
+                    <button
+                        onClick={() => setExpandido(e => !e)}
+                        className="w-full text-center text-zinc-600 text-xs font-bold uppercase py-1 hover:text-zinc-400 transition-colors"
+                    >
+                        {expandido ? '▲ Mostrar menos' : `▼ Ver todas (${categorias.length - LIMITE_CATEGORIAS} más)`}
+                    </button>
+                )}
+            </div>
         </div>
     )
 }
