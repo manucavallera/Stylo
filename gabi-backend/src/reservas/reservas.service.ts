@@ -78,7 +78,7 @@ export class ReservasService {
                         },
                         {
                             type: 'text',
-                            text: 'Analizá este comprobante de transferencia bancaria argentina. Extraé todos los datos visibles. Para estadoOperacion usá: "aprobada" si dice aprobada/acreditada/exitosa/confirmada, "pendiente" si dice pendiente/en proceso, "rechazada" si dice rechazada/fallida/error. Respondé SOLO con JSON válido sin texto extra: {"monto": number|null, "alias": string|null, "cvu": string|null, "fecha": string|null, "hora": string|null, "banco": string|null, "nombreRemitente": string|null, "nombreDestinatario": string|null, "nroOperacion": string|null, "tipoTransferencia": string|null, "estadoOperacion": string|null}',
+                            text: 'Analizá este comprobante de transferencia bancaria argentina. Extraé todos los datos visibles. IMPORTANTE: alias y cvu deben ser del DESTINATARIO (sección "Para"), NO del remitente (sección "De"). Para estadoOperacion usá: "aprobada" si dice aprobada/acreditada/exitosa/confirmada, "pendiente" si dice pendiente/en proceso, "rechazada" si dice rechazada/fallida/error. Respondé SOLO con JSON válido sin texto extra: {"monto": number|null, "alias": string|null, "cvu": string|null, "fecha": string|null, "hora": string|null, "banco": string|null, "nombreRemitente": string|null, "nombreDestinatario": string|null, "nroOperacion": string|null, "tipoTransferencia": string|null, "estadoOperacion": string|null}',
                         },
                     ],
                 }],
