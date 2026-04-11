@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://manu-stylobackend.gygo4l.easypanel.host/ventas/resumen-diario",
+        "url": "https://manu-stylobackend.gygo4l.easypanel.host/api/v1/ventas/resumen-diario",
         "options": {}
       },
       "id": "d4e5f6a7-0002-0002-0002-000000000004",
@@ -54,8 +54,12 @@
           ]
         },
         "sendBody": true,
-        "contentType": "json",
-        "body": "={{ JSON.stringify({ number: '5493434807989', text: $json.mensaje }) }}",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "5493434807989" },
+            { "name": "text", "value": "={{ $json.mensaje }}" }
+          ]
+        },
         "options": {}
       },
       "id": "d4e5f6a7-0004-0004-0004-000000000004",
