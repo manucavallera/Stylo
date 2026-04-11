@@ -68,7 +68,7 @@ export class ReservasService {
             const client = new Anthropic({ apiKey });
             const response = await client.messages.create({
                 model: 'claude-haiku-4-5',
-                max_tokens: 256,
+                max_tokens: 512,
                 messages: [{
                     role: 'user',
                     content: [
@@ -78,7 +78,7 @@ export class ReservasService {
                         },
                         {
                             type: 'text',
-                            text: 'Analizá este comprobante de transferencia bancaria argentina. Extraé: monto (número entero sin separadores), alias o CVU del destinatario, fecha y hora de la operación, nombre del banco o billetera. Respondé SOLO con JSON válido sin texto extra: {"monto": number|null, "alias": string|null, "fecha": string|null, "banco": string|null}',
+                            text: 'Analizá este comprobante de transferencia bancaria argentina. Extraé todos los datos visibles. Respondé SOLO con JSON válido sin texto extra: {"monto": number|null, "alias": string|null, "cvu": string|null, "fecha": string|null, "hora": string|null, "banco": string|null, "nombreRemitente": string|null, "nombreDestinatario": string|null, "nroOperacion": string|null, "tipoTransferencia": string|null}',
                         },
                     ],
                 }],
@@ -96,10 +96,16 @@ export class ReservasService {
 
             return {
                 monto,
-                alias: data.alias ?? null,
-                fecha: data.fecha ?? null,
-                banco: data.banco ?? null,
                 coincide,
+                alias: data.alias ?? null,
+                cvu: data.cvu ?? null,
+                fecha: data.fecha ?? null,
+                hora: data.hora ?? null,
+                banco: data.banco ?? null,
+                nombreRemitente: data.nombreRemitente ?? null,
+                nombreDestinatario: data.nombreDestinatario ?? null,
+                nroOperacion: data.nroOperacion ?? null,
+                tipoTransferencia: data.tipoTransferencia ?? null,
             };
         } catch (err: any) {
             this.logger.warn(`Claude Vision falló: ${err.message}`);
@@ -420,9 +426,14 @@ export class ReservasService {
                     : `$${montoStr}`;
 
             mensajeGabi += `\n💰 Monto: ${estadoMonto}`;
+            if (analisis.fecha || analisis.hora) mensajeGabi += `\n📅 ${[analisis.fecha, analisis.hora].filter(Boolean).join(' ')}`;
             if (analisis.banco) mensajeGabi += `\n🏦 ${analisis.banco}`;
-            if (analisis.fecha) mensajeGabi += `\n📅 ${analisis.fecha}`;
-            if (analisis.alias) mensajeGabi += `\n🔑 ${analisis.alias}`;
+            if (analisis.tipoTransferencia) mensajeGabi += `\n🔄 ${analisis.tipoTransferencia}`;
+            if (analisis.nombreRemitente) mensajeGabi += `\n👤 Remitente: ${analisis.nombreRemitente}`;
+            if (analisis.nombreDestinatario) mensajeGabi += `\n🎯 Destinatario: ${analisis.nombreDestinatario}`;
+            if (analisis.alias) mensajeGabi += `\n🔑 Alias: ${analisis.alias}`;
+            if (analisis.cvu) mensajeGabi += `\n🔑 CVU: ${analisis.cvu}`;
+            if (analisis.nroOperacion) mensajeGabi += `\n🧾 Op: ${analisis.nroOperacion}`;
         } else {
             mensajeGabi += `\n_(No se pudo analizar la imagen)_`;
         }
