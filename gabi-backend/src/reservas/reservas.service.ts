@@ -78,7 +78,7 @@ export class ReservasService {
                         },
                         {
                             type: 'text',
-                            text: 'Analizá este comprobante de transferencia bancaria argentina. Extraé todos los datos visibles. Respondé SOLO con JSON válido sin texto extra: {"monto": number|null, "alias": string|null, "cvu": string|null, "fecha": string|null, "hora": string|null, "banco": string|null, "nombreRemitente": string|null, "nombreDestinatario": string|null, "nroOperacion": string|null, "tipoTransferencia": string|null}',
+                            text: 'Analizá este comprobante de transferencia bancaria argentina. Extraé todos los datos visibles. Para estadoOperacion usá: "aprobada" si dice aprobada/acreditada/exitosa/confirmada, "pendiente" si dice pendiente/en proceso, "rechazada" si dice rechazada/fallida/error. Respondé SOLO con JSON válido sin texto extra: {"monto": number|null, "alias": string|null, "cvu": string|null, "fecha": string|null, "hora": string|null, "banco": string|null, "nombreRemitente": string|null, "nombreDestinatario": string|null, "nroOperacion": string|null, "tipoTransferencia": string|null, "estadoOperacion": string|null}',
                         },
                     ],
                 }],
@@ -106,6 +106,7 @@ export class ReservasService {
                 nombreDestinatario: data.nombreDestinatario ?? null,
                 nroOperacion: data.nroOperacion ?? null,
                 tipoTransferencia: data.tipoTransferencia ?? null,
+                estadoOperacion: data.estadoOperacion ?? null,
             };
         } catch (err: any) {
             this.logger.warn(`Claude Vision falló: ${err.message}`);
@@ -395,11 +396,12 @@ export class ReservasService {
             data: { comprobanteUrl: dto.comprobanteUrl },
         });
 
-        // Analizar comprobante con Claude Vision (fire-and-forget con resultado)
+        // Analizar comprobante con Claude Vision
         const precio = Number(reserva.prenda.precioVenta);
         const categoria = reserva.prenda.categoria?.nombre ?? '';
         const talle = reserva.prenda.talle?.nombre ?? '';
         const descPrenda = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Prenda';
+        const config = await this.configuracionService.getConfig();
 
         const imagenSource = dto.comprobanteBase64
             ? { base64: dto.comprobanteBase64, mimeType: dto.comprobanteMimeType }
@@ -426,13 +428,51 @@ export class ReservasService {
                     : `$${montoStr}`;
 
             mensajeGabi += `\n💰 Monto: ${estadoMonto}`;
-            if (analisis.fecha || analisis.hora) mensajeGabi += `\n📅 ${[analisis.fecha, analisis.hora].filter(Boolean).join(' ')}`;
+
+            // Validar estado de la operación
+            if (analisis.estadoOperacion) {
+                const estadoOp = analisis.estadoOperacion.toLowerCase();
+                if (estadoOp === 'aprobada') mensajeGabi += `\n✅ Estado: Aprobada`;
+                else if (estadoOp === 'pendiente') mensajeGabi += `\n⚠️ Estado: PENDIENTE — no acreditada`;
+                else if (estadoOp === 'rechazada') mensajeGabi += `\n❌ Estado: RECHAZADA`;
+                else mensajeGabi += `\n⚠️ Estado: ${analisis.estadoOperacion}`;
+            }
+
+            // Validar fecha — debe ser de hoy (Argentina)
+            if (analisis.fecha) {
+                const hoyAR = new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+                const fechaComp = analisis.fecha.replace(/-/g, '/').split('/').reverse().join('/');
+                const fechaOk = fechaComp === hoyAR || analisis.fecha.replace(/-/g, '/') === hoyAR;
+                const estadoFecha = fechaOk ? `✅ ${analisis.fecha}` : `⚠️ ${analisis.fecha} — NO es de hoy`;
+                mensajeGabi += `\n📅 ${[estadoFecha, analisis.hora].filter(Boolean).join(' ')}`;
+            } else if (analisis.hora) {
+                mensajeGabi += `\n📅 ${analisis.hora}`;
+            }
+
+            // Validar alias/CVU destinatario contra config de la tienda
+            const aliasConfig = config.aliasCobro?.trim().toLowerCase();
+            const cvuConfig = config.cvuCobro?.trim();
+            if (analisis.alias) {
+                const aliasComp = analisis.alias.trim().toLowerCase();
+                if (aliasConfig && aliasComp !== aliasConfig) {
+                    mensajeGabi += `\n⚠️ Alias: ${analisis.alias} — NO coincide (esperado: ${config.aliasCobro})`;
+                } else {
+                    mensajeGabi += `\n🔑 Alias: ${analisis.alias}${aliasConfig ? ' ✅' : ''}`;
+                }
+            }
+            if (analisis.cvu) {
+                const cvuComp = analisis.cvu.trim();
+                if (cvuConfig && cvuComp !== cvuConfig) {
+                    mensajeGabi += `\n⚠️ CVU: ${analisis.cvu} — NO coincide`;
+                } else {
+                    mensajeGabi += `\n🔑 CVU: ${analisis.cvu}${cvuConfig ? ' ✅' : ''}`;
+                }
+            }
+
             if (analisis.banco) mensajeGabi += `\n🏦 ${analisis.banco}`;
             if (analisis.tipoTransferencia) mensajeGabi += `\n🔄 ${analisis.tipoTransferencia}`;
             if (analisis.nombreRemitente) mensajeGabi += `\n👤 Remitente: ${analisis.nombreRemitente}`;
             if (analisis.nombreDestinatario) mensajeGabi += `\n🎯 Destinatario: ${analisis.nombreDestinatario}`;
-            if (analisis.alias) mensajeGabi += `\n🔑 Alias: ${analisis.alias}`;
-            if (analisis.cvu) mensajeGabi += `\n🔑 CVU: ${analisis.cvu}`;
             if (analisis.nroOperacion) mensajeGabi += `\n🧾 Op: ${analisis.nroOperacion}`;
         } else {
             mensajeGabi += `\n_(No se pudo analizar la imagen)_`;

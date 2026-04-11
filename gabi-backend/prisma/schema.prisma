@@ -90,8 +90,10 @@ model Proveedor {
 // ============================================================
 
 model ConfiguracionTienda {
-  id             String @id @default("singleton")
-  minutosReserva Int    @default(20) @map("minutos_reserva")
+  id             String  @id @default("singleton")
+  minutosReserva Int     @default(20) @map("minutos_reserva")
+  aliasCobro     String? @map("alias_cobro")
+  cvuCobro       String? @map("cvu_cobro")
 
   @@map("configuracion_tienda")
 }

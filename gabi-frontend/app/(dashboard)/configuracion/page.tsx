@@ -50,11 +50,18 @@ export default function ConfiguracionPage() {
 function SeccionGeneral() {
     const [config, setConfig] = useState<ConfiguracionTienda | null>(null)
     const [minutos, setMinutos] = useState('')
+    const [alias, setAlias] = useState('')
+    const [cvu, setCvu] = useState('')
     const [guardando, setGuardando] = useState(false)
     const [ok, setOk] = useState(false)
 
     useEffect(() => {
-        configuracionApi.get().then(c => { setConfig(c); setMinutos(String(c.minutosReserva)) })
+        configuracionApi.get().then(c => {
+            setConfig(c)
+            setMinutos(String(c.minutosReserva))
+            setAlias(c.aliasCobro ?? '')
+            setCvu(c.cvuCobro ?? '')
+        })
     }, [])
 
     async function handleGuardar(e: React.FormEvent) {
@@ -62,7 +69,11 @@ function SeccionGeneral() {
         setGuardando(true)
         setOk(false)
         try {
-            await configuracionApi.update({ minutosReserva: Number(minutos) })
+            await configuracionApi.update({
+                minutosReserva: Number(minutos),
+                aliasCobro: alias || undefined,
+                cvuCobro: cvu || undefined,
+            })
             setOk(true)
         } finally {
             setGuardando(false)
@@ -86,6 +97,28 @@ function SeccionGeneral() {
                         value={minutos}
                         onChange={e => setMinutos(e.target.value)}
                         required
+                    />
+                </div>
+                <div>
+                    <label className="label">Alias de cobro</label>
+                    <p className="text-zinc-500 text-xs mb-2">Alias de Mercado Pago o banco al que deben transferir. Se usa para validar comprobantes automáticamente.</p>
+                    <input
+                        className="input"
+                        type="text"
+                        placeholder="ej: stylo.ropa.mp"
+                        value={alias}
+                        onChange={e => setAlias(e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="label">CVU de cobro <span className="text-zinc-600 normal-case font-normal">(opcional)</span></label>
+                    <p className="text-zinc-500 text-xs mb-2">Si usás CBU/CVU además del alias.</p>
+                    <input
+                        className="input"
+                        type="text"
+                        placeholder="ej: 0000003100...22"
+                        value={cvu}
+                        onChange={e => setCvu(e.target.value)}
                     />
                 </div>
                 {ok && <p className="text-emerald-400 text-sm">✓ Guardado</p>}

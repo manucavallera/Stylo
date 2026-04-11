@@ -13,11 +13,11 @@ export class ConfiguracionService {
         });
     }
 
-    async updateConfig(data: { minutosReserva?: number }) {
+    async updateConfig(data: { minutosReserva?: number; aliasCobro?: string; cvuCobro?: string }) {
         return this.prisma.configuracionTienda.upsert({
             where: { id: 'singleton' },
-            create: { id: 'singleton', minutosReserva: data.minutosReserva ?? 20 },
-            update: { minutosReserva: data.minutosReserva },
+            create: { id: 'singleton', minutosReserva: data.minutosReserva ?? 20, aliasCobro: data.aliasCobro, cvuCobro: data.cvuCobro },
+            update: { minutosReserva: data.minutosReserva, aliasCobro: data.aliasCobro, cvuCobro: data.cvuCobro },
         });
     }
 }
