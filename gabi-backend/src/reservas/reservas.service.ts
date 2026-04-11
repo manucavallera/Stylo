@@ -408,7 +408,10 @@ export class ReservasService {
 
         mensajeGabi += `\n\nEntrá a Reservas para confirmar el pago.`;
 
-        // Enviar imagen del comprobante + texto a Gabi
+        // Siempre mandar texto a Gabi
+        this.notificarGabi(mensajeGabi);
+
+        // Además intentar reenviar la imagen (fire-and-forget)
         const evolutionApiUrl = process.env.EVOLUTION_API_URL;
         const evolutionApiKey = process.env.EVOLUTION_API_KEY;
         const evolutionInstance = process.env.EVOLUTION_INSTANCE;
@@ -423,12 +426,10 @@ export class ReservasService {
                     mediatype: 'image',
                     mimetype: 'image/jpeg',
                     media: dto.comprobanteUrl,
-                    caption: mensajeGabi,
+                    caption: '📎 Imagen del comprobante',
                     fileName: 'comprobante.jpg',
                 }),
             }).catch((err) => this.logger.warn(`sendMedia a Gabi falló: ${err.message}`));
-        } else {
-            this.notificarGabi(mensajeGabi);
         }
 
         return { ok: true };
