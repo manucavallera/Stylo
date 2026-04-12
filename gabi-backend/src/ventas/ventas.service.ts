@@ -25,7 +25,7 @@ export class VentasService {
         }
 
         // Transacción: crear venta + actualizar estado prenda + actualizar caja
-        return this.prisma.$transaction(async (tx) => {
+        const venta = await this.prisma.$transaction(async (tx) => {
             // Guardar el costo histórico para analytics futuros
             const venta = await tx.venta.create({
                 data: {
@@ -38,7 +38,11 @@ export class VentasService {
                     metodoPago: dto.metodoPago,
                     canalVenta: dto.canalVenta,
                 },
-                include: { prenda: true, cliente: true, reserva: true },
+                include: {
+                    prenda: { include: { categoria: true, talle: true } },
+                    cliente: true,
+                    reserva: true,
+                },
             });
 
             // Prenda pasa a VENDIDO
@@ -65,6 +69,74 @@ export class VentasService {
 
             return venta;
         });
+
+        // ── Notificar al grupo de WA (fire-and-forget) ───────────
+        this.notificarVentaAlGrupo(venta).catch(() => { });
+
+        return venta;
+    }
+
+    private async notificarVentaAlGrupo(venta: any) {
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE;
+        if (!evolutionApiUrl || !evolutionApiKey || !evolutionInstance) return;
+
+        const grupos = await this.prisma.grupoWhatsapp.findMany({ where: { activo: true } });
+        if (grupos.length === 0) return;
+
+        const categoria = venta.prenda?.categoria?.nombre ?? 'Prenda';
+        const talle = venta.prenda?.talle?.nombre;
+        const precio = Number(venta.precioFinal).toLocaleString('es-AR');
+        const desc = talle ? `${categoria} — Talle ${talle}` : categoria;
+        const mensaje = `🔴 *VENDIDO*\n👗 ${desc}\n💰 $${precio}`;
+
+        // Buscar foto de la prenda
+        const prenda = await this.prisma.prenda.findUnique({
+            where: { id: venta.prendaId },
+            include: { fotos: { take: 1, orderBy: { orden: 'asc' } } },
+        });
+        const fotoUrl = prenda?.fotos?.[0]?.url;
+
+        if (fotoUrl) {
+            // Intentar convertir a base64 (más confiable que URL pública)
+            let mediaBase64: string | null = null;
+            try {
+                const imgRes = await fetch(fotoUrl);
+                if (imgRes.ok) {
+                    const buffer = await imgRes.arrayBuffer();
+                    mediaBase64 = Buffer.from(buffer).toString('base64');
+                }
+            } catch { /* fallback a URL si falla */ }
+
+            await Promise.allSettled(
+                grupos.map((grupo) =>
+                    fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                        body: JSON.stringify({
+                            number: grupo.groupId,
+                            mediatype: 'image',
+                            mimetype: 'image/jpeg',
+                            media: mediaBase64 ?? fotoUrl,
+                            caption: mensaje,
+                            fileName: 'prenda.jpg',
+                        }),
+                    }),
+                ),
+            );
+        } else {
+            // Sin foto, mandar solo texto
+            await Promise.allSettled(
+                grupos.map((grupo) =>
+                    fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                        body: JSON.stringify({ number: grupo.groupId, text: mensaje }),
+                    }),
+                ),
+            );
+        }
     }
 
     // ── Listado de ventas del día ────────────────────────────────

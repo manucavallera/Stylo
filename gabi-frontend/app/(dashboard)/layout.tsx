@@ -155,7 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </aside>
 
             {/* Contenido principal */}
-            <main className="md:ml-64 pt-14 md:pt-0 p-4 md:p-8 min-h-screen">
+            <main className="md:ml-64 pt-14 md:pt-0 p-4 md:p-8 min-h-screen overflow-x-hidden">
                 <GlobalSearch />
                 {children}
             </main>

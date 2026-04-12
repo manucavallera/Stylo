@@ -177,12 +177,12 @@ export default function BalancePage() {
                 </div>
 
                 {periodo === 'custom' ? (
-                    <div className="flex gap-2 items-center">
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                         <input type="date" value={customDesde} onChange={e => setCustomDesde(e.target.value)} className="input flex-1 text-sm" />
-                        <span className="text-zinc-600">→</span>
+                        <span className="hidden sm:block text-zinc-600">→</span>
                         <input type="date" value={customHasta} onChange={e => setCustomHasta(e.target.value)} className="input flex-1 text-sm" />
                         <button onClick={cargar} disabled={!customDesde || !customHasta}
-                            className="px-4 py-2.5 bg-orange-500 text-black text-xs font-black uppercase rounded-xl hover:bg-orange-400 disabled:opacity-40">
+                            className="w-full sm:w-auto px-4 py-2.5 bg-orange-500 text-black text-xs font-black uppercase rounded-xl hover:bg-orange-400 disabled:opacity-40">
                             Ver
                         </button>
                     </div>
