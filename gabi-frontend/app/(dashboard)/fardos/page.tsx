@@ -352,10 +352,9 @@ function ModalAbrirFardo({ fardo, titulo, onClose, onAbierto }: { fardo: Fardo; 
         ? Number(fardo.costoTotal) * Number(fardo.tipoCambio)
         : Number(fardo.costoTotal)
     const costoUnitario = totalPrendas > 0 ? costoBaseArs / totalPrendas : 0
-    const precioSugerido = Math.round(costoUnitario * 3)
 
     function addItem() {
-        setItems(p => [...p, { categoriaId: '', talleId: '', cantidad: 1, precioVenta: precioSugerido > 0 ? String(precioSugerido) : '', tieneFalla: false }])
+        setItems(p => [...p, { categoriaId: '', talleId: '', cantidad: 1, precioVenta: '', tieneFalla: false }])
     }
 
     function removeItem(idx: number) {
@@ -431,11 +430,6 @@ function ModalAbrirFardo({ fardo, titulo, onClose, onAbierto }: { fardo: Fardo; 
                 </div>
             </div>
 
-            {precioSugerido > 0 && (
-                <p className="text-xs text-zinc-500 mb-3">
-                    💡 Precio sugerido (costo × 3): <span className="text-orange-400 font-bold">${precioSugerido.toLocaleString('es-AR')}</span> — podés editarlo por ítem
-                </p>
-            )}
 
             <form onSubmit={handleSubmit} className="space-y-3">
                 {items.map((item, idx) => {
