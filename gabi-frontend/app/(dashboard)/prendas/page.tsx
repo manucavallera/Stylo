@@ -30,7 +30,7 @@ function PrendasInner() {
     const [loading, setLoading] = useState(true)
     const [loadingMas, setLoadingMas] = useState(false)
     const [hasMore, setHasMore] = useState(false)
-    const [filtroEstado, setFiltroEstado] = useState(estadoUrl ?? (fardoId ? '' : 'DISPONIBLE'))
+    const [filtroEstado, setFiltroEstado] = useState(estadoUrl ?? 'DISPONIBLE')
     const [filtroSinFoto, setFiltroSinFoto] = useState(false)
     const [editando, setEditando] = useState<Prenda | null>(null)
     const skipRef = useRef(0)
