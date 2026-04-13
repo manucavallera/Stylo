@@ -256,6 +256,65 @@ export class ReservasService {
             }).catch(() => null);
         }
 
+        // Notificar al grupo de WA
+        if (evolutionApiUrl && evolutionApiKey && evolutionInstance) {
+            const grupos = await this.prisma.grupoWhatsapp.findMany({ where: { activo: true } });
+            if (grupos.length > 0) {
+                const prenda = await this.prisma.prenda.findUnique({
+                    where: { id: reserva.prendaId },
+                    include: {
+                        categoria: true,
+                        talle: true,
+                        fotos: { take: 1, orderBy: { orden: 'asc' } },
+                    },
+                });
+                const categoria = prenda?.categoria?.nombre ?? '';
+                const talle = prenda?.talle?.nombre ?? '';
+                const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
+                const precio = Number(reserva.prenda.precioVenta).toLocaleString('es-AR');
+                const mensajeGrupo = `🔴 *VENDIDO*\n👗 ${desc}\n💰 $${precio}`;
+                const fotoUrl = prenda?.fotos?.[0]?.url;
+
+                if (fotoUrl) {
+                    let mediaBase64: string | null = null;
+                    try {
+                        const imgRes = await fetch(fotoUrl);
+                        if (imgRes.ok) {
+                            const buffer = await imgRes.arrayBuffer();
+                            mediaBase64 = Buffer.from(buffer).toString('base64');
+                        }
+                    } catch { /* fallback a URL */ }
+
+                    Promise.allSettled(
+                        grupos.map(grupo =>
+                            fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                                body: JSON.stringify({
+                                    number: grupo.groupId,
+                                    mediatype: 'image',
+                                    mimetype: 'image/jpeg',
+                                    media: mediaBase64 ?? fotoUrl,
+                                    caption: mensajeGrupo,
+                                    fileName: 'prenda.jpg',
+                                }),
+                            }),
+                        ),
+                    ).catch(() => null);
+                } else {
+                    Promise.allSettled(
+                        grupos.map(grupo =>
+                            fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                                body: JSON.stringify({ number: grupo.groupId, text: mensajeGrupo }),
+                            }),
+                        ),
+                    ).catch(() => null);
+                }
+            }
+        }
+
         return reservaConfirmada;
     }
 
@@ -517,7 +576,7 @@ export class ReservasService {
             where: { fecha: hoy, estado: 'ABIERTA' },
         });
 
-        const confirmadas: Array<{ desc: string; precio: number }> = [];
+        const confirmadas: Array<{ desc: string; precio: number; prendaId: string }> = [];
 
         await this.prisma.$transaction(async (tx) => {
             for (const id of ids) {
@@ -557,7 +616,7 @@ export class ReservasService {
                 const categoria = reserva.prenda.categoria?.nombre ?? '';
                 const talle = reserva.prenda.talle?.nombre ?? '';
                 const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
-                confirmadas.push({ desc, precio: Number(reserva.prenda.precioVenta) });
+                confirmadas.push({ desc, precio: Number(reserva.prenda.precioVenta), prendaId: reserva.prendaId });
             }
         }, { timeout: 30000, maxWait: 10000 });
 
@@ -586,6 +645,62 @@ export class ReservasService {
                     headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
                     body: JSON.stringify({ number: remoteJid, text: mensaje }),
                 }).catch(() => null);
+            }
+        }
+
+        // ── Notificar al grupo de WA por cada prenda vendida ────────
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE;
+        if (evolutionApiUrl && evolutionApiKey && evolutionInstance) {
+            const grupos = await this.prisma.grupoWhatsapp.findMany({ where: { activo: true } });
+            if (grupos.length > 0) {
+                for (const item of confirmadas) {
+                    const mensaje = `🔴 *VENDIDO*\n👗 ${item.desc}\n💰 $${item.precio.toLocaleString('es-AR')}`;
+                    const prenda = await this.prisma.prenda.findUnique({
+                        where: { id: item.prendaId },
+                        include: { fotos: { take: 1, orderBy: { orden: 'asc' } } },
+                    });
+                    const fotoUrl = prenda?.fotos?.[0]?.url;
+
+                    if (fotoUrl) {
+                        let mediaBase64: string | null = null;
+                        try {
+                            const imgRes = await fetch(fotoUrl);
+                            if (imgRes.ok) {
+                                const buffer = await imgRes.arrayBuffer();
+                                mediaBase64 = Buffer.from(buffer).toString('base64');
+                            }
+                        } catch { /* fallback a URL */ }
+
+                        await Promise.allSettled(
+                            grupos.map(grupo =>
+                                fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                                    body: JSON.stringify({
+                                        number: grupo.groupId,
+                                        mediatype: 'image',
+                                        mimetype: 'image/jpeg',
+                                        media: mediaBase64 ?? fotoUrl,
+                                        caption: mensaje,
+                                        fileName: 'prenda.jpg',
+                                    }),
+                                }),
+                            ),
+                        );
+                    } else {
+                        await Promise.allSettled(
+                            grupos.map(grupo =>
+                                fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                                    body: JSON.stringify({ number: grupo.groupId, text: mensaje }),
+                                }),
+                            ),
+                        );
+                    }
+                }
             }
         }
 
