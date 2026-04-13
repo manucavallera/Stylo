@@ -272,7 +272,10 @@ export class ReservasService {
                 const talle = prenda?.talle?.nombre ?? '';
                 const desc = [categoria, talle].filter(Boolean).join(' — Talle ') || 'Sin categoría';
                 const precio = Number(reserva.prenda.precioVenta).toLocaleString('es-AR');
-                const mensajeGrupo = `🔴 *VENDIDO*\n👗 ${desc}\n💰 $${precio}`;
+                const lineas = [`🔴 *VENDIDO*`, desc, `💰 $${precio}`];
+                if (prenda?.tieneFalla) lineas.push(`⚠️ Falla: ${prenda.descripcionFalla ?? 'sí'}`);
+                if (prenda?.nota) lineas.push(`📝 ${prenda.nota}`);
+                const mensajeGrupo = lineas.join('\n');
                 const fotoUrl = prenda?.fotos?.[0]?.url;
 
                 if (fotoUrl) {
@@ -656,11 +659,14 @@ export class ReservasService {
             const grupos = await this.prisma.grupoWhatsapp.findMany({ where: { activo: true } });
             if (grupos.length > 0) {
                 for (const item of confirmadas) {
-                    const mensaje = `🔴 *VENDIDO*\n👗 ${item.desc}\n💰 $${item.precio.toLocaleString('es-AR')}`;
                     const prenda = await this.prisma.prenda.findUnique({
                         where: { id: item.prendaId },
                         include: { fotos: { take: 1, orderBy: { orden: 'asc' } } },
                     });
+                    const lineas = [`🔴 *VENDIDO*`, item.desc, `💰 $${item.precio.toLocaleString('es-AR')}`];
+                    if (prenda?.tieneFalla) lineas.push(`⚠️ Falla: ${prenda.descripcionFalla ?? 'sí'}`);
+                    if (prenda?.nota) lineas.push(`📝 ${prenda.nota}`);
+                    const mensaje = lineas.join('\n');
                     const fotoUrl = prenda?.fotos?.[0]?.url;
 
                     if (fotoUrl) {

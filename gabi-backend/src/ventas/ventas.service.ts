@@ -85,17 +85,23 @@ export class VentasService {
         const grupos = await this.prisma.grupoWhatsapp.findMany({ where: { activo: true } });
         if (grupos.length === 0) return;
 
-        const categoria = venta.prenda?.categoria?.nombre ?? 'Prenda';
-        const talle = venta.prenda?.talle?.nombre;
-        const precio = Number(venta.precioFinal).toLocaleString('es-AR');
-        const desc = talle ? `${categoria} — Talle ${talle}` : categoria;
-        const mensaje = `🔴 *VENDIDO*\n👗 ${desc}\n💰 $${precio}`;
-
-        // Buscar foto de la prenda
+        // Buscar foto y datos completos de la prenda
         const prenda = await this.prisma.prenda.findUnique({
             where: { id: venta.prendaId },
             include: { fotos: { take: 1, orderBy: { orden: 'asc' } } },
         });
+
+        const categoria = venta.prenda?.categoria?.nombre ?? 'Prenda';
+        const talle = venta.prenda?.talle?.nombre;
+        const precio = Number(venta.precioFinal).toLocaleString('es-AR');
+        const lineas = [
+            `🔴 *VENDIDO*`,
+            talle ? `${categoria} — Talle ${talle}` : categoria,
+            `💰 $${precio}`,
+        ];
+        if (prenda?.tieneFalla) lineas.push(`⚠️ Falla: ${prenda.descripcionFalla ?? 'sí'}`);
+        if (prenda?.nota) lineas.push(`📝 ${prenda.nota}`);
+        const mensaje = lineas.join('\n');
         const fotoUrl = prenda?.fotos?.[0]?.url;
 
         if (fotoUrl) {
