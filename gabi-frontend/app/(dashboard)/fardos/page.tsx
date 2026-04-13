@@ -373,15 +373,6 @@ function ModalAbrirFardo({ fardo, titulo, onClose, onAbierto }: { fardo: Fardo; 
         }))
     }
 
-    // Cuando cambia totalPrendas y hay costo, sugerir precio en ítems sin precio
-    useEffect(() => {
-        if (precioSugerido > 0) {
-            setItems(p => p.map(item => ({
-                ...item,
-                precioVenta: item.precioVenta === '' ? String(precioSugerido) : item.precioVenta
-            })))
-        }
-    }, [precioSugerido])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
