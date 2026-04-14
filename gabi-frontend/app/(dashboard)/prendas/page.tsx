@@ -143,6 +143,7 @@ function PrendasInner() {
                                 prenda={prenda}
                                 onEditar={() => setEditando(prenda)}
                                 onEliminar={() => handleEliminar(prenda.id)}
+                                onFotoAgregada={(id, url) => setPrendas(ps => ps.map(p => p.id === id ? { ...p, fotos: [{ url } as any] } : p))}
                             />
                         ))}
                     </div>
@@ -199,10 +200,13 @@ function ModalQR({ prenda, onClose }: { prenda: Prenda; onClose: () => void }) {
     )
 }
 
-function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar: () => void; onEliminar: () => void }) {
+function PrendaCard({ prenda, onEditar, onEliminar, onFotoAgregada }: { prenda: Prenda; onEditar: () => void; onEliminar: () => void; onFotoAgregada?: (prendaId: string, url: string) => void }) {
     const precio = prenda.precioPromocional ?? prenda.precioVenta
     const [verQR, setVerQR] = useState(false)
     const [publicando, setPublicando] = useState(false)
+    const [subiendoFoto, setSubiendoFoto] = useState(false)
+    const inputFotoRef = useRef<HTMLInputElement>(null)
+    const supabase = createClient()
 
     async function republicar() {
         if (publicando) return
@@ -216,15 +220,50 @@ function PrendaCard({ prenda, onEditar, onEliminar }: { prenda: Prenda; onEditar
         }
     }
 
+    async function handleFotoRapida(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setSubiendoFoto(true)
+        try {
+            const ext = file.name.split('.').pop()
+            const path = `prendas/${prenda.id}/${Date.now()}.${ext}`
+            const { error: uploadError } = await supabase.storage.from('prendas').upload(path, file, { upsert: false })
+            if (uploadError) throw new Error(uploadError.message)
+            const { data: { publicUrl } } = supabase.storage.from('prendas').getPublicUrl(path)
+            await prendasApi.addFoto(prenda.id, publicUrl, 0)
+            onFotoAgregada?.(prenda.id, publicUrl)
+        } catch (e: any) {
+            alert(e.message || 'Error al subir foto')
+        } finally {
+            setSubiendoFoto(false)
+            if (inputFotoRef.current) inputFotoRef.current.value = ''
+        }
+    }
+
     return (
         <>
         {verQR && <ModalQR prenda={prenda} onClose={() => setVerQR(false)} />}
+        <input ref={inputFotoRef} type="file" accept="image/*" className="hidden" onChange={handleFotoRapida} />
         <div className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden hover:border-orange-500/20 transition-all">
             <div className="aspect-square bg-zinc-800 relative overflow-hidden">
                 {prenda.fotos?.[0] ? (
                     <img src={prenda.fotos[0].url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl text-zinc-700">👕</div>
+                    <button
+                        type="button"
+                        onClick={() => inputFotoRef.current?.click()}
+                        disabled={subiendoFoto}
+                        className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-600 hover:text-orange-400 hover:bg-orange-500/5 transition-all disabled:opacity-40"
+                    >
+                        {subiendoFoto ? (
+                            <span className="text-xs uppercase tracking-widest">Subiendo...</span>
+                        ) : (
+                            <>
+                                <span className="text-3xl">📷</span>
+                                <span className="text-[10px] uppercase tracking-widest">Agregar foto</span>
+                            </>
+                        )}
+                    </button>
                 )}
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full border text-xs font-bold ${ESTADO_COLORS[prenda.estado]}`}>
                     {prenda.estado}

@@ -782,7 +782,6 @@ function ModalSesionFotos({ fardo, onClose }: { fardo: Fardo; onClose: () => voi
                         ref={inputRef}
                         type="file"
                         accept="image/*"
-                        capture="environment"
                         className="hidden"
                         onChange={handleFoto}
                     />
