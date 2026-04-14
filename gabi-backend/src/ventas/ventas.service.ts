@@ -70,8 +70,10 @@ export class VentasService {
             return venta;
         });
 
-        // ── Notificar al grupo de WA (fire-and-forget) ───────────
-        this.notificarVentaAlGrupo(venta).catch(() => { });
+        // ── Notificar al grupo de WA solo si la venta vino por WhatsApp ───────────
+        if (dto.canalVenta === 'WHATSAPP') {
+            this.notificarVentaAlGrupo(venta).catch(() => { });
+        }
 
         return venta;
     }
