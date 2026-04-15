@@ -4,7 +4,7 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateVentaDto } from './dto/create-venta.dto';
+import { CreateVentaDto, CanalVenta } from './dto/create-venta.dto';
 
 @Injectable()
 export class VentasService {
@@ -70,8 +70,8 @@ export class VentasService {
             return venta;
         });
 
-        // ── Notificar al grupo de WA solo si la venta vino por WhatsApp ───────────
-        if (dto.canalVenta === 'WHATSAPP') {
+        // ── Notificar al grupo de WA solo si la venta vino por WhatsApp (ONLINE) ──
+        if (dto.canalVenta === CanalVenta.ONLINE) {
             this.notificarVentaAlGrupo(venta).catch(() => { });
         }
 
