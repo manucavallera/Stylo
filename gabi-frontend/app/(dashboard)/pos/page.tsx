@@ -179,7 +179,10 @@ function PosInner() {
                             {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-zinc-900 rounded-xl animate-pulse" />)}
                         </div>
                     ) : prendas.length === 0 ? (
-                        <p className="text-center py-8 text-zinc-500">No hay prendas disponibles</p>
+                        <div className="text-center py-8 space-y-1">
+                            <p className="text-3xl">👕</p>
+                            <p className="text-zinc-400 text-sm font-bold">Sin prendas disponibles</p>
+                        </div>
                     ) : (
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                             {prendas.map(p => (

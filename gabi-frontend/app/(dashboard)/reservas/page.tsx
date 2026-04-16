@@ -157,7 +157,11 @@ export default function ReservasPage() {
                     {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-zinc-900 rounded-2xl animate-pulse" />)}
                 </div>
             ) : reservas.length === 0 ? (
-                <div className="text-center py-20 text-zinc-500">No hay reservas</div>
+                <div className="text-center py-20 space-y-2">
+                    <p className="text-4xl">🔒</p>
+                    <p className="text-zinc-400 font-bold">Sin reservas activas</p>
+                    <p className="text-zinc-600 text-sm">Las reservas aparecen acá cuando lleguen pedidos</p>
+                </div>
             ) : tab === 'activas' && grupos ? (
                 <div className="space-y-5">
                     {grupos.map((grupo: Reserva[]) => {

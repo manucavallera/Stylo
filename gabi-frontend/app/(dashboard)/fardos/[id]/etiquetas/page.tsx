@@ -28,7 +28,7 @@ export default function EtiquetasPage() {
 
     if (!fardo) return <div className="p-8 text-center text-zinc-400">Fardo no encontrado</div>
 
-    const prendas = fardo.prendas ?? []
+    const prendas = (fardo.prendas ?? []).filter((p: any) => p.estado !== 'VENDIDO')
 
     return (
         <div>

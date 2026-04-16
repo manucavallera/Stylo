@@ -218,22 +218,22 @@ export default function CajaPage() {
 
             {/* ── Resumen del día ── */}
             <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2 bg-zinc-900 border border-white/5 rounded-2xl p-5 flex items-center justify-between">
-                        <div>
-                            <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Total vendido hoy</p>
-                            <p className="text-white text-3xl font-black">${Number(resumen?.totalVendido ?? 0).toLocaleString('es-AR')}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Ventas</p>
-                            <p className="text-white text-3xl font-black">{resumen?.cantidadVentas ?? 0}</p>
-                        </div>
+                <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                        <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Total vendido hoy</p>
+                        <p className="text-white text-3xl font-black">${Number(resumen?.totalVendido ?? 0).toLocaleString('es-AR')}</p>
                     </div>
+                    <div className="text-right">
+                        <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">Ventas</p>
+                        <p className="text-white text-3xl font-black">{resumen?.cantidadVentas ?? 0}</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {(['EFECTIVO', 'MERCADOPAGO', 'TRANSFERENCIA'] as const).map(m => {
                         const dato = resumen?.porMetodoPago.find(p => p.metodoPago === m)
                         const total = Number(dato?._sum?.precioFinal ?? 0)
                         return (
-                            <div key={m} className="bg-zinc-900 border border-white/5 rounded-xl p-4">
+                            <div key={m} className="bg-zinc-900 border border-white/5 rounded-xl p-3 sm:p-4">
                                 <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">
                                     {METODO_ICON[m]} {METODO_LABEL[m]}
                                 </p>
@@ -253,8 +253,10 @@ export default function CajaPage() {
                     Ventas de hoy {ventas.length > 0 && <span className="text-zinc-600">({ventas.length})</span>}
                 </h2>
                 {ventas.length === 0 ? (
-                    <div className="bg-zinc-900 border border-white/5 rounded-2xl p-8 text-center">
-                        <p className="text-zinc-600 text-sm">Sin ventas registradas hoy</p>
+                    <div className="bg-zinc-900 border border-white/5 rounded-2xl p-8 text-center space-y-2">
+                        <p className="text-4xl">🛒</p>
+                        <p className="text-zinc-400 font-bold">Sin ventas hoy</p>
+                        <p className="text-zinc-600 text-sm">Las ventas del POS aparecen acá</p>
                     </div>
                 ) : (
                     <VentasHoyLista
@@ -363,17 +365,17 @@ function VentasHoyLista({ ventas, onAnular, confirmAnular, setConfirmAnular, anu
                         {confirmAnular === v.id ? (
                             <div className="flex gap-1">
                                 <button onClick={() => onAnular(v.id)} disabled={anulando === v.id}
-                                    className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs font-black border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50">
+                                    className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 text-xs font-black border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50">
                                     {anulando === v.id ? '...' : 'Sí'}
                                 </button>
                                 <button onClick={() => setConfirmAnular(null)}
-                                    className="px-2 py-1 rounded-lg border border-white/10 text-zinc-500 text-xs hover:border-white/20">
+                                    className="px-3 py-2 rounded-lg border border-white/10 text-zinc-500 text-xs hover:border-white/20">
                                     No
                                 </button>
                             </div>
                         ) : (
                             <button onClick={() => setConfirmAnular(v.id)}
-                                className="px-2 py-1 rounded-lg border border-white/10 text-zinc-600 text-xs hover:border-red-500/30 hover:text-red-400 transition-colors">
+                                className="px-3 py-2 rounded-lg border border-white/10 text-zinc-600 text-xs hover:border-red-500/30 hover:text-red-400 transition-colors">
                                 Anular
                             </button>
                         )}

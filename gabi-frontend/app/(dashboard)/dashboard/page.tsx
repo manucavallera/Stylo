@@ -86,7 +86,7 @@ export default function DashboardPage() {
             </div>
 
             {/* KPIs stock */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 text-center">
                     <p className="text-zinc-500 text-[10px] uppercase tracking-widest mb-1">Disponibles</p>
                     {loading ? (
@@ -120,7 +120,7 @@ export default function DashboardPage() {
             {resumen && resumen.porMetodoPago.length > 0 && (
                 <div className="bg-zinc-900 border border-white/5 rounded-2xl p-5">
                     <h2 className="text-white font-black uppercase tracking-wide text-sm mb-4">Por método de pago</h2>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {(['EFECTIVO', 'MERCADOPAGO', 'TRANSFERENCIA'] as const).map(m => {
                             const dato = resumen.porMetodoPago.find(p => p.metodoPago === m)
                             const total = Number(dato?._sum?.precioFinal ?? 0)

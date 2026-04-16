@@ -131,8 +131,10 @@ function PrendasInner() {
                     ))}
                 </div>
             ) : prendas.length === 0 ? (
-                <div className="text-center py-20 text-zinc-500">
-                    No hay prendas{filtroEstado ? ` en estado ${filtroEstado}` : ''}
+                <div className="text-center py-20 space-y-2">
+                    <p className="text-4xl">👕</p>
+                    <p className="text-zinc-400 font-bold">Sin prendas{filtroEstado ? ` en estado ${filtroEstado.toLowerCase()}` : ''}</p>
+                    <p className="text-zinc-600 text-sm">Abrí un fardo para agregar stock</p>
                 </div>
             ) : (
                 <div className="space-y-4">
