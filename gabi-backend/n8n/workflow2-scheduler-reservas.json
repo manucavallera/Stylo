@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "https://manu-stylobackend.gygo4l.easypanel.host/reservas/activas",
+        "url": "https://manu-stylobackend.gygo4l.easypanel.host/api/v1/reservas/activas",
         "options": {}
       },
       "id": "b1b2c3d4-0002-0002-0002-000000000001",
@@ -93,7 +93,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://manu-stylobackend.gygo4l.easypanel.host/reservas/expirar-vencidas",
+        "url": "https://manu-stylobackend.gygo4l.easypanel.host/api/v1/reservas/expirar-vencidas",
         "options": {}
       },
       "id": "b1b2c3d4-0005-0005-0005-000000000001",
