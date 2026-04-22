@@ -41,6 +41,13 @@ export class ReservasController {
         return this.reservasService.cancelar(id);
     }
 
+    // POST /api/v1/reservas/enviar-recordatorios — llamado por cron de n8n
+    @Public()
+    @Post('enviar-recordatorios')
+    enviarRecordatorios() {
+        return this.reservasService.enviarRecordatorios();
+    }
+
     // POST /api/v1/reservas/expirar-vencidas — llamado por cron de n8n
     @Public()
     @Post('expirar-vencidas')

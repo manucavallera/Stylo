@@ -20,22 +20,22 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://manu-stylobackend.gygo4l.easypanel.host/api/v1/reservas/activas",
+        "method": "POST",
+        "url": "https://manu-stylobackend.gygo4l.easypanel.host/api/v1/reservas/enviar-recordatorios",
         "options": {}
       },
       "id": "b1b2c3d4-0002-0002-0002-000000000001",
-      "name": "GET Reservas Activas",
+      "name": "POST Enviar Recordatorios",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [480, 300]
     },
     {
       "parameters": {
-        "jsCode": "const ahora = new Date();\nconst items = $input.all();\n\nconst reservas = items[0].json;\n\nif (!Array.isArray(reservas)) return [];\n\nconst resultado = [];\n\nfor (const reserva of reservas) {\n  const expiracion = new Date(reserva.fechaExpiracion);\n  const diffMs = expiracion - ahora;\n  const diffMin = diffMs / 1000 / 60;\n\n  // Filtrar las que vencen en entre 14 y 16 minutos\n  if (diffMin >= 14 && diffMin <= 16) {\n    resultado.push({\n      json: {\n        telefonoWhatsapp: reserva.cliente.telefonoWhatsapp,\n        minutosRestantes: Math.round(diffMin),\n        fotoUrl: reserva.prenda.fotos?.[0]?.url ?? null,\n      }\n    });\n  }\n}\n\nreturn resultado;"
+        "jsCode": "const items = $input.all();\nconst lista = items[0].json;\nif (!Array.isArray(lista) || lista.length === 0) return [];\nreturn lista.map(r => ({ json: r }));"
       },
       "id": "b1b2c3d4-0003-0003-0003-000000000001",
-      "name": "Filtrar próximas a vencer",
+      "name": "Expandir items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [720, 300]
@@ -108,7 +108,7 @@
       "main": [
         [
           {
-            "node": "GET Reservas Activas",
+            "node": "POST Enviar Recordatorios",
             "type": "main",
             "index": 0
           },
@@ -120,18 +120,18 @@
         ]
       ]
     },
-    "GET Reservas Activas": {
+    "POST Enviar Recordatorios": {
       "main": [
         [
           {
-            "node": "Filtrar próximas a vencer",
+            "node": "Expandir items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Filtrar próximas a vencer": {
+    "Expandir items": {
       "main": [
         [
           {

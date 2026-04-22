@@ -861,4 +861,33 @@ export class ReservasService {
             orderBy: { fechaExpiracion: 'asc' },
         });
     }
+
+    async enviarRecordatorios() {
+        const ahora = new Date();
+        const candidatas = await this.prisma.reserva.findMany({
+            where: { estado: 'ACTIVA', recordatorioEnviado: false },
+            include: { prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 } } }, cliente: true },
+        });
+
+        const paraEnviar = candidatas.filter(r => {
+            const totalMs = r.fechaExpiracion.getTime() - r.createdAt.getTime();
+            const restanteMs = r.fechaExpiracion.getTime() - ahora.getTime();
+            // Enviar cuando queda entre 30% y 60% del tiempo original
+            const pct = restanteMs / totalMs;
+            return pct >= 0.3 && pct <= 0.6 && restanteMs > 0;
+        });
+
+        if (paraEnviar.length === 0) return [];
+
+        await this.prisma.reserva.updateMany({
+            where: { id: { in: paraEnviar.map(r => r.id) } },
+            data: { recordatorioEnviado: true },
+        });
+
+        return paraEnviar.map(r => ({
+            telefonoWhatsapp: r.cliente.telefonoWhatsapp,
+            minutosRestantes: Math.round((r.fechaExpiracion.getTime() - ahora.getTime()) / 60000),
+            fotoUrl: r.prenda.fotos?.[0]?.url ?? null,
+        }));
+    }
 }
