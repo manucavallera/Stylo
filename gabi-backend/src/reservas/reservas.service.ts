@@ -887,7 +887,7 @@ export class ReservasService {
     async enviarRecordatorios() {
         const ahora = new Date();
         const candidatas = await this.prisma.reserva.findMany({
-            where: { estado: 'ACTIVA', recordatorioEnviado: false },
+            where: { estado: 'ACTIVA', recordatorioEnviado: { not: true } },
             include: { prenda: { include: { fotos: { orderBy: { orden: 'asc' }, take: 1 } } }, cliente: true },
         });
 
