@@ -387,7 +387,16 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
         precioPromocional: String(prenda.precioPromocional ?? ''),
         estado: prenda.estado,
         nota: prenda.nota ?? '',
+        categoriaId: (prenda.categoria as any)?.id ?? '',
+        talleId: (prenda.talle as any)?.id ?? '',
     })
+    const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([])
+    const [talles, setTalles] = useState<{ id: string; nombre: string }[]>([])
+
+    useEffect(() => {
+        categoriasApi.listar().then(setCategorias).catch(() => null)
+        tallesApi.listar().then(setTalles).catch(() => null)
+    }, [])
     const [fotos, setFotos] = useState<{ id: string; url: string; orden: number }[]>(
         (prenda.fotos ?? []).map((f, i) => ({ id: (f as any).id ?? String(i), url: f.url, orden: i }))
     )
@@ -409,6 +418,8 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
             }
             if (form.precioPromocional) data.precioPromocional = Number(form.precioPromocional)
             else data.precioPromocional = null
+            if (form.categoriaId) data.categoriaId = form.categoriaId
+            if (form.talleId) data.talleId = form.talleId
             const actualizada = await prendasApi.actualizar(prenda.id, data)
             onGuardado({ ...actualizada, fotos })
         } catch (e: any) {
@@ -512,6 +523,22 @@ function ModalEditarPrenda({ prenda, onClose, onGuardado }: {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="label">Categoría</label>
+                            <select className="input" value={form.categoriaId} onChange={e => setForm(p => ({ ...p, categoriaId: e.target.value }))}>
+                                <option value="">Sin cambiar</option>
+                                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label">Talle</label>
+                            <select className="input" value={form.talleId} onChange={e => setForm(p => ({ ...p, talleId: e.target.value }))}>
+                                <option value="">Sin cambiar</option>
+                                {talles.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                            </select>
+                        </div>
+                    </div>
                     <div>
                         <label className="label">Precio de venta</label>
                         <input
