@@ -872,9 +872,9 @@ export class ReservasService {
         const paraEnviar = candidatas.filter(r => {
             const totalMs = r.fechaExpiracion.getTime() - r.createdAt.getTime();
             const restanteMs = r.fechaExpiracion.getTime() - ahora.getTime();
-            // Enviar cuando queda entre 30% y 60% del tiempo original
+            // Enviar cuando queda menos del 60% del tiempo (y aún no expiró)
             const pct = restanteMs / totalMs;
-            return pct >= 0.3 && pct <= 0.6 && restanteMs > 0;
+            return pct < 0.6 && restanteMs > 0;
         });
 
         if (paraEnviar.length === 0) return [];
