@@ -14,6 +14,7 @@ export class ReservasController {
     }
 
     // GET /api/v1/reservas/activas
+    @Public()
     @Get('activas')
     findActivas() {
         return this.reservasService.findActivas();
@@ -41,6 +42,7 @@ export class ReservasController {
     }
 
     // POST /api/v1/reservas/expirar-vencidas — llamado por cron de n8n
+    @Public()
     @Post('expirar-vencidas')
     expirarVencidas() {
         return this.reservasService.expirarVencidas();
