@@ -373,25 +373,47 @@ export class ReservasService {
     // ── Expirar reservas vencidas (llamado por cron/n8n) ─────────
     async expirarVencidas() {
         const ahora = new Date();
+        const evolutionApiUrl = process.env.EVOLUTION_API_URL;
+        const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+        const evolutionInstance = process.env.EVOLUTION_INSTANCE || 'manu';
 
         const reservasVencidas = await this.prisma.reserva.findMany({
             where: { estado: 'ACTIVA', fechaExpiracion: { lt: ahora } },
+            include: { cliente: true, prenda: { include: { categoria: true, talle: true, fotos: { orderBy: { orden: 'asc' }, take: 1 } } } },
         });
 
         if (reservasVencidas.length === 0) return { expiradas: 0 };
 
         await this.prisma.$transaction(async (tx) => {
             for (const reserva of reservasVencidas) {
-                await tx.reserva.update({
-                    where: { id: reserva.id },
-                    data: { estado: 'EXPIRADA' },
-                });
-                await tx.prenda.update({
-                    where: { id: reserva.prendaId },
-                    data: { estado: 'DISPONIBLE' },
-                });
+                await tx.reserva.update({ where: { id: reserva.id }, data: { estado: 'EXPIRADA' } });
+                await tx.prenda.update({ where: { id: reserva.prendaId }, data: { estado: 'DISPONIBLE' } });
             }
         });
+
+        // Notificar al cliente por WhatsApp
+        if (evolutionApiUrl && evolutionApiKey) {
+            for (const reserva of reservasVencidas) {
+                const tel = reserva.cliente?.telefonoWhatsapp;
+                if (!tel) continue;
+                const desc = [reserva.prenda.categoria?.nombre, reserva.prenda.talle?.nombre].filter(Boolean).join(' — Talle ') || 'la prenda';
+                const fotoUrl = reserva.prenda.fotos?.[0]?.url;
+                const mensaje = `⏰ Tu reserva de *${desc}* expiró. La prenda volvió al catálogo. Si todavía la querés, mandá la foto de nuevo para reservarla 😊`;
+                if (fotoUrl) {
+                    fetch(`${evolutionApiUrl}/message/sendMedia/${evolutionInstance}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                        body: JSON.stringify({ number: tel, mediatype: 'image', mimetype: 'image/jpeg', media: fotoUrl, caption: mensaje, fileName: 'prenda.jpg' }),
+                    }).catch(() => null);
+                } else {
+                    fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+                        body: JSON.stringify({ number: tel, text: mensaje }),
+                    }).catch(() => null);
+                }
+            }
+        }
 
         return { expiradas: reservasVencidas.length };
     }
@@ -870,11 +892,9 @@ export class ReservasService {
         });
 
         const paraEnviar = candidatas.filter(r => {
-            const totalMs = r.fechaExpiracion.getTime() - r.createdAt.getTime();
             const restanteMs = r.fechaExpiracion.getTime() - ahora.getTime();
-            // Enviar cuando queda entre 40-60% del tiempo (centrado en la mitad)
-            const pct = restanteMs / totalMs;
-            return pct >= 0.4 && pct <= 0.6 && restanteMs > 0;
+            // Enviar apenas hay más de 1 minuto restante (dispara al minuto de crear la reserva)
+            return restanteMs > 60000;
         });
 
         if (paraEnviar.length === 0) return [];
