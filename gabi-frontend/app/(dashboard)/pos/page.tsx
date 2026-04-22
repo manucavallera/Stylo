@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { prendasApi, ventasApi, cajaApi, clientesApi, type Prenda, type Caja, type Cliente } from '@/lib/api'
+import { prendasApi, ventasApi, cajaApi, clientesApi, categoriasApi, tallesApi, fardosApi, type Prenda, type Caja, type Cliente, type Fardo } from '@/lib/api'
 import { ClientePicker } from '@/components/ClientePicker'
 import { toast } from '@/components/Toast'
 
@@ -30,6 +30,12 @@ function PosInner() {
 
     const [modo, setModo] = useState<'buscar' | 'qr'>('buscar')
     const [busqueda, setBusqueda] = useState('')
+    const [filtroCategoria, setFiltroCategoria] = useState('')
+    const [filtroTalle, setFiltroTalle] = useState('')
+    const [filtroFardo, setFiltroFardo] = useState('')
+    const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([])
+    const [talles, setTalles] = useState<{ id: string; nombre: string }[]>([])
+    const [fardos, setFardos] = useState<Fardo[]>([])
     const [prendas, setPrendas] = useState<Prenda[]>([])
     const [loadingPrendas, setLoadingPrendas] = useState(false)
     const [qrInput, setQrInput] = useState('')
@@ -46,6 +52,9 @@ function PosInner() {
     useEffect(() => {
         cajaApi.hoy().then(setCaja).catch(() => null)
         clientesApi.listar({ take: 500 }).then(res => setClientes(res.items)).catch(() => null)
+        categoriasApi.listar().then(setCategorias).catch(() => null)
+        tallesApi.listar().then(setTalles).catch(() => null)
+        fardosApi.listar().then(setFardos).catch(() => null)
     }, [])
 
     // Pre-cargar prenda si viene de /prendas
@@ -61,10 +70,13 @@ function PosInner() {
         setLoadingPrendas(true)
         const params: Record<string, string> = { estado: 'DISPONIBLE' }
         if (busqueda) params.search = busqueda
+        if (filtroCategoria) params.categoriaId = filtroCategoria
+        if (filtroTalle) params.talleId = filtroTalle
+        if (filtroFardo) params.fardoId = filtroFardo
         prendasApi.listar(params)
             .then(setPrendas)
             .finally(() => setLoadingPrendas(false))
-    }, [busqueda, modo])
+    }, [busqueda, filtroCategoria, filtroTalle, filtroFardo, modo])
 
     function seleccionarPrenda(p: Prenda) {
         setPrenda(p)
@@ -170,10 +182,24 @@ function PosInner() {
                     <input
                         value={busqueda}
                         onChange={e => setBusqueda(e.target.value)}
-                        placeholder="Filtrar por categoría o talle..."
+                        placeholder="Buscar por categoría, talle o nota..."
                         className="input"
                         autoFocus
                     />
+                    <div className="grid grid-cols-3 gap-2">
+                        <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} className="input text-sm">
+                            <option value="">Categoría</option>
+                            {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                        </select>
+                        <select value={filtroTalle} onChange={e => setFiltroTalle(e.target.value)} className="input text-sm">
+                            <option value="">Talle</option>
+                            {talles.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                        </select>
+                        <select value={filtroFardo} onChange={e => setFiltroFardo(e.target.value)} className="input text-sm">
+                            <option value="">Fardo</option>
+                            {fardos.map(f => <option key={f.id} value={f.id}>{f.nombre ?? f.proveedor?.nombre ?? 'Fardo'}</option>)}
+                        </select>
+                    </div>
                     {loadingPrendas ? (
                         <div className="space-y-2">
                             {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-zinc-900 rounded-xl animate-pulse" />)}

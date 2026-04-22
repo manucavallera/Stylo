@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { prendasApi, fardosApi, type Prenda } from '@/lib/api'
+import { prendasApi, fardosApi, categoriasApi, tallesApi, type Prenda, type Fardo } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 
 const ESTADOS = ['', 'DISPONIBLE', 'RESERVADO', 'VENDIDO', 'FALLA']
@@ -23,7 +23,7 @@ const TAKE = 40
 function PrendasInner() {
     const searchParams = useSearchParams()
     const router = useRouter()
-    const fardoId = searchParams.get('fardoId') ?? undefined
+    const fardoIdUrl = searchParams.get('fardoId') ?? undefined
     const estadoUrl = searchParams.get('estado')
 
     const [prendas, setPrendas] = useState<Prenda[]>([])
@@ -32,8 +32,22 @@ function PrendasInner() {
     const [hasMore, setHasMore] = useState(false)
     const [filtroEstado, setFiltroEstado] = useState(estadoUrl ?? 'DISPONIBLE')
     const [filtroSinFoto, setFiltroSinFoto] = useState(false)
+    const [filtroTexto, setFiltroTexto] = useState('')
+    const [filtroCategoria, setFiltroCategoria] = useState('')
+    const [filtroTalle, setFiltroTalle] = useState('')
+    const [filtroFardo, setFiltroFardo] = useState(fardoIdUrl ?? '')
+    const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([])
+    const [talles, setTalles] = useState<{ id: string; nombre: string }[]>([])
+    const [fardos, setFardos] = useState<Fardo[]>([])
     const [editando, setEditando] = useState<Prenda | null>(null)
     const skipRef = useRef(0)
+    const textoRef = useRef('')
+
+    useEffect(() => {
+        categoriasApi.listar().then(setCategorias).catch(() => null)
+        tallesApi.listar().then(setTalles).catch(() => null)
+        fardosApi.listar().then(setFardos).catch(() => null)
+    }, [])
 
     async function cargar(reset = true) {
         const currentSkip = reset ? 0 : skipRef.current
@@ -42,8 +56,11 @@ function PrendasInner() {
 
         const params: Record<string, string> = { take: String(TAKE), skip: String(currentSkip) }
         if (filtroEstado) params.estado = filtroEstado
-        if (fardoId) params.fardoId = fardoId
+        if (filtroFardo) params.fardoId = filtroFardo
+        if (filtroCategoria) params.categoriaId = filtroCategoria
+        if (filtroTalle) params.talleId = filtroTalle
         if (filtroSinFoto) { params.sinFoto = 'true'; params.estado = 'DISPONIBLE' }
+        if (textoRef.current) params.search = textoRef.current
 
         try {
             const result = await prendasApi.listar(params)
@@ -61,10 +78,6 @@ function PrendasInner() {
         setFiltroEstado(e)
         setFiltroSinFoto(false)
         skipRef.current = 0
-        const params = new URLSearchParams()
-        if (fardoId) params.set('fardoId', fardoId)
-        if (e) params.set('estado', e)
-        router.replace(`/prendas?${params.toString()}`, { scroll: false })
     }
 
     function toggleSinFoto() {
@@ -72,7 +85,14 @@ function PrendasInner() {
         skipRef.current = 0
     }
 
-    useEffect(() => { cargar(true) }, [filtroEstado, filtroSinFoto, fardoId])
+    useEffect(() => {
+        textoRef.current = filtroTexto
+        skipRef.current = 0
+        const t = setTimeout(() => cargar(true), 300)
+        return () => clearTimeout(t)
+    }, [filtroTexto])
+
+    useEffect(() => { skipRef.current = 0; cargar(true) }, [filtroEstado, filtroSinFoto, filtroCategoria, filtroTalle, filtroFardo])
 
     async function handleEliminar(id: string) {
         if (!confirm('¿Eliminar esta prenda? Esta acción no se puede deshacer.')) return
@@ -90,16 +110,37 @@ function PrendasInner() {
                 <div>
                     <h1 className="text-2xl font-black text-white uppercase">Prendas</h1>
                     <p className="text-zinc-500 text-xs uppercase tracking-widest mt-0.5">
-                        {prendas.length} encontradas{fardoId && ' · filtradas por fardo'}
+                        {prendas.length} encontradas
                     </p>
                 </div>
-                {fardoId && (
-                    <a href="/fardos" className="px-4 py-2 border border-white/10 text-zinc-400 text-xs font-bold uppercase rounded-xl hover:border-white/20 transition-colors">
-                        ← Volver a fardos
-                    </a>
-                )}
             </div>
 
+            {/* Búsqueda por texto */}
+            <input
+                type="search"
+                placeholder="Buscar por categoría, talle o nota..."
+                value={filtroTexto}
+                onChange={e => setFiltroTexto(e.target.value)}
+                className="input w-full"
+            />
+
+            {/* Filtros por categoría, talle y fardo */}
+            <div className="grid grid-cols-3 gap-2">
+                <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} className="input text-sm">
+                    <option value="">Todas las categorías</option>
+                    {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+                <select value={filtroTalle} onChange={e => setFiltroTalle(e.target.value)} className="input text-sm">
+                    <option value="">Todos los talles</option>
+                    {talles.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
+                <select value={filtroFardo} onChange={e => setFiltroFardo(e.target.value)} className="input text-sm">
+                    <option value="">Todos los fardos</option>
+                    {fardos.map(f => <option key={f.id} value={f.id}>{f.nombre ?? f.proveedor?.nombre ?? 'Fardo'}</option>)}
+                </select>
+            </div>
+
+            {/* Filtros de estado */}
             <div className="flex gap-2 flex-wrap">
                 {ESTADOS.map(e => (
                     <button
