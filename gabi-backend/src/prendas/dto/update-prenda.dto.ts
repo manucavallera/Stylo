@@ -36,4 +36,12 @@ export class UpdatePrendaDto {
     @IsString()
     @IsOptional()
     nota?: string;
+
+    @IsString()
+    @IsOptional()
+    categoriaId?: string;
+
+    @IsString()
+    @IsOptional()
+    talleId?: string;
 }

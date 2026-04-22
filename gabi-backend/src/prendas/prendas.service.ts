@@ -94,7 +94,11 @@ export class PrendasService {
     // ── Actualizar precio y/o estado ────────────────────────────
     async update(id: string, dto: UpdatePrendaDto) {
         await this.findOne(id);
-        return this.prisma.prenda.update({ where: { id }, data: dto as any });
+        return this.prisma.prenda.update({
+            where: { id },
+            data: dto as any,
+            include: { categoria: true, talle: true, fotos: true, fardo: { include: { proveedor: true } } },
+        });
     }
 
     // ── Eliminar prenda ─────────────────────────────────────────
